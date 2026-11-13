@@ -1,9 +1,23 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEffect, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import type { RouteNode } from './types';
-import { Link, Outlet, Router, lazy, useCacheSnapshot, useLocation, useNavigate, useRestoreScroll, useRouteStatus, routerRuntime, syncCacheSnapshot } from './index';
+import { Link, Outlet, Router, useCacheSnapshot, useLocation, useRouteStatus, routerRuntime, syncCacheSnapshot } from './index';
 import { resetRouterState, restoreScrollNow, setRouterConfig, useRouteData } from './runtime';
+
+// Synthetic runtime tree routes ('/about', '/search') intentionally don't exist in the
+// generated RouteId union — bypass Link's compile-time checking to keep runtime parity.
+type RawLinkState = { isActive: boolean; isPending: boolean };
+const RawLink = Link as unknown as (props: {
+  to: string;
+  exact?: boolean;
+  search?: string | Record<string, string | number | boolean | null | undefined>;
+  className?: string | ((state: RawLinkState) => string);
+  style?: CSSProperties | ((state: RawLinkState) => CSSProperties);
+  as?: (props: any, state: RawLinkState) => ReactElement;
+  beforeNavigate?: () => Promise<void>;
+  children?: ReactNode;
+} & Record<`data-${string}`, string>) => ReturnType<typeof Link>;
 
 const node = (id: string, path: string, options: Record<string, unknown> = {}, children: RouteNode[] = []): RouteNode => ({
   id, path, options, children,
@@ -25,18 +39,18 @@ describe('Link parity (original Link.test.tsx)', () => {
       <>
         <h1>Home</h1>
         <Link to="/" data-testid="home-self">Home self</Link>
-        <Link to="/about" data-testid="about-link">About link</Link>
-        <Link to="/about" exact data-testid="about-exact">About exact</Link>
-        <Link to="/about" className={({ isActive }) => (isActive ? 'dynamic-active' : 'dynamic-inactive')} data-testid="dynamic-class">Dynamic class</Link>
-        <Link to="/about" style={({ isActive }) => ({ color: isActive ? 'red' : 'blue' })} data-testid="dynamic-style">Dynamic style</Link>
-        <Link to="/about" as={props => <button {...props} data-testid="custom-as" />} data-testid="custom-wrap">Custom element</Link>
-        <Link to="/about" beforeNavigate={beforeNavigateSpy} data-testid="guarded">Guarded</Link>
-        <Link to="/search?foo=bar" data-testid="search-string">With search</Link>
-        <Link to="/search" search={{ q: 'hello', page: 2 }} data-testid="search-object">With search object</Link>
-        <Link to="/about" data-testid="middle-click">Middle click</Link>
+        <RawLink to="/about" data-testid="about-link">About link</RawLink>
+        <RawLink to="/about" exact data-testid="about-exact">About exact</RawLink>
+        <RawLink to="/about" className={({ isActive }) => (isActive ? 'dynamic-active' : 'dynamic-inactive')} data-testid="dynamic-class">Dynamic class</RawLink>
+        <RawLink to="/about" style={({ isActive }) => ({ color: isActive ? 'red' : 'blue' })} data-testid="dynamic-style">Dynamic style</RawLink>
+        <RawLink to="/about" as={props => <button {...props} data-testid="custom-as" />} data-testid="custom-wrap">Custom element</RawLink>
+        <RawLink to="/about" beforeNavigate={beforeNavigateSpy} data-testid="guarded">Guarded</RawLink>
+        <RawLink to="/search?foo=bar" data-testid="search-string">With search</RawLink>
+        <RawLink to="/search" search={{ q: 'hello', page: 2 }} data-testid="search-object">With search object</RawLink>
+        <RawLink to="/about" data-testid="middle-click">Middle click</RawLink>
       </>
     ) }),
-    node('/about', '/about', { component: () => <><Link to="/about" data-testid="about-link-there">About page</Link></> }),
+    node('/about', '/about', { component: () => <><RawLink to="/about" data-testid="about-link-there">About page</RawLink></> }),
     node('/search', '/search', { component: () => <p>Search page</p> }),
     node('/slow', '/slow', { loader: () => new Promise<string>(() => {}), pendingFallback: <p>Loading slow</p>, component: () => <p>Slow page</p> }),
   ]);

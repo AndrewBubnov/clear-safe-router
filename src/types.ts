@@ -51,6 +51,13 @@ export type FileRouteDefinition<Id extends RouteId = RouteId, Options extends Fi
   useLoaderData<T = Options extends { loader: (...args: never[]) => infer Data } ? Awaited<Data> : unknown>(): T;
   useRouteStatus(): RouteStatus;
 };
+export type RouteApi<Id extends RouteId = RouteId> = {
+  id: Id;
+  useParams(): ParamsFor<Id>;
+  useSearch(): SearchParams;
+  useLoaderData<T = unknown>(): T;
+  useRouteStatus(): RouteStatus;
+};
 export type RouteNode = Omit<FileRouteDefinition, 'options'> & { options: FileRouteOptions<any>; path: string; children: RouteNode[] };
 export type RouteMatch = { route: RouteNode; params: Record<string, string>; key: string };
 export type LoaderState = { data: unknown; loaderError: Error | null; beforeLoadError: Error | null };
@@ -124,7 +131,7 @@ export type ElementProps<T extends HTMLElement = HTMLElement> = {
 
 export type LinkState = { isActive: boolean; isPending: boolean };
 export type LinkDestination = KnownDestination | ({ toRaw: string; params?: Record<string, string | number> } & NavigateOptions);
-export type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick' | 'style'> & {
+export type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick' | 'style' | 'className'> & {
   prefetch?: DefaultPrefetch;
   hoverPrefetchDelay?: number;
   className?: string | ((state: LinkState) => string);
@@ -133,7 +140,7 @@ export type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | '
   style?: CSSProperties | ((state: LinkState) => CSSProperties);
   beforeNavigate?(): Promise<void>;
   exact?: boolean;
-  as?: (props: ElementProps<HTMLAnchorElement>, state: LinkState) => ReactElement;
+  as?: (props: ElementProps<any>, state: LinkState) => ReactElement;
 } & LinkDestination;
 
 export type NavigateTarget = TypedDestination | string | -1 | ({ toRaw: string } & NavigateOptions);

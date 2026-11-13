@@ -1,22 +1,19 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { ActionIcon, Switch, useComputedColorScheme, useMantineColorScheme } from '@mantine/core';
 import { IconMenu2, IconMoon, IconRoute, IconSettings, IconSun, IconX } from '@tabler/icons-react';
-import { Link } from '../index';
+import { Link, type LinkProps } from '../index';
 import { usePlaygroundSettings } from './usePlaygroundSettings';
 import { NAV_LINK_AS } from './NavLinkAs';
 
-const NavLink = ({ to, exact, children }: { to: string; exact?: boolean; children: ReactNode }) => {
+const NavLink = (props: LinkProps) => {
 	const { navLinkAs } = usePlaygroundSettings();
 	return (
 		<Link
-			toRaw={to}
-			exact={exact}
+			{...props}
 			as={NAV_LINK_AS[navLinkAs]}
 			className={navLinkAs === 'link' ? 'pg-nav-link' : ''}
 			activeClassName={navLinkAs === 'link' ? 'active-link' : ''}
-		>
-			{children}
-		</Link>
+		/>
 	);
 };
 

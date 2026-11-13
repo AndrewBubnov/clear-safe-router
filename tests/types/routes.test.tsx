@@ -1,4 +1,4 @@
-import { Link, useNavigate } from '../../src';
+import { getRoute, Link, useNavigate } from '../../src';
 import { Route as CatchAllRoute } from '../../src/routes/$';
 import { Route as ProductRoute } from '../../src/routes/playground/cache/product/$productId';
 
@@ -32,4 +32,17 @@ const unknownNavigation = () => useNavigate()({ to: '/missing' });
 // @ts-expect-error navigate needs dynamic params
 const missingNavigateParam = () => useNavigate()({ to: '/playground/cache/product/$productId' });
 
-void [validStatic, validDynamic, validCatchAll, validRaw, validRawWithOptions, validNavigate, validRawNavigate, validRawObjectNavigate, paramsAreTyped, catchAllParamsAreTyped, loaderDataIsTyped, loaderDataWrongField, validRoot, unknownRoute, missingParam, wrongParam, missingCatchAllParam, extraStaticParam, unknownNavigation, missingNavigateParam];
+const itemRouteApi = getRoute('/playground/nest/$nestId/item/$itemId');
+const apiParamsAreTyped: { nestId: string; itemId: string } = itemRouteApi.useParams();
+const apiParamsTypedInline: string = itemRouteApi.useParams().nestId;
+const productRouteApi = getRoute('/playground/cache/product/$productId');
+const apiProductParam: string = productRouteApi.useParams().productId;
+const apiStaticRoute = getRoute('/playground/settings');
+// @ts-expect-error getRoute rejects unknown route IDs
+const unknownApiRoute = getRoute('/does-not-exist');
+// @ts-expect-error getRoute params are typed — a wrong property is a compile error
+const apiWrongParam: string = itemRouteApi.useParams().bogus;
+// @ts-expect-error params shape must match the route ID
+const apiParamsWrongShape: { nestId: string; bogus: string } = itemRouteApi.useParams();
+
+void [validStatic, validDynamic, validCatchAll, validRaw, validRawWithOptions, validNavigate, validRawNavigate, validRawObjectNavigate, paramsAreTyped, catchAllParamsAreTyped, loaderDataIsTyped, loaderDataWrongField, validRoot, unknownRoute, missingParam, wrongParam, missingCatchAllParam, extraStaticParam, unknownNavigation, missingNavigateParam, apiParamsAreTyped, apiParamsTypedInline, apiProductParam, apiStaticRoute, unknownApiRoute, apiWrongParam, apiParamsWrongShape];

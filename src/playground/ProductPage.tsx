@@ -1,8 +1,10 @@
-import { Link, useLoaderState, useParams } from '../index';
+import { getRoute, Link, useLoaderState } from '../index';
 import { getCallCount } from './api';
 
+const productRoute = getRoute('/playground/cache/product/$productId');
+
 const ProductPage = () => {
-	const { productId } = useParams<{ productId: string }>();
+	const { productId } = productRoute.useParams();
 	const { data } = useLoaderState<{ id: string; description: string; loads: number }>();
 	return (
 		<div className="pg-wrap">

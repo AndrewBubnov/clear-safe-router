@@ -1,22 +1,23 @@
-import { Link, useLoaderState, useParams } from '../index';
+import { Link } from '../index';
+import { Route } from '../routes/playground/nest/$nestId/item/$itemId';
 import { getCallCount } from './api';
 
 const NestItemPage = () => {
-	const { nestId, itemId } = useParams<{ nestId: string; itemId: string }>();
-	const { data } = useLoaderState<{ description: string }>();
+	const { nestId, itemId } = Route.useParams();
+	const { description } = Route.useLoaderData();
 	return (
 		<div className="pg-wrap">
 			<h1>
 				Item {itemId} of nest {nestId}
 			</h1>
 			<div className="pg-card">
-				<p>{data.description}</p>
+				<p>{description}</p>
 				<p>
 					<span className="pg-badge">loader calls: {getCallCount(`nest-${nestId}-${itemId}`)}</span>
 				</p>
 			</div>
 			<p>
-				<Link toRaw={`/playground/nest/${nestId}`}>← Back to nest {nestId}</Link>
+				<Link to="/playground/nest/$nestId" params={{ nestId }}>← Back to nest {nestId}</Link>
 			</p>
 		</div>
 	);
