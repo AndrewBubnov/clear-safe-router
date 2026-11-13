@@ -27,20 +27,16 @@ Built on the core runtime from [clear-react-router](https://github.com/AndrewBub
 
 ```
 src/routes/
-  __root.tsx          # Root layout (wraps entire app)
-  index.tsx           # Home route ("/")
-  about.tsx           # Static route ("/about")
+  __root.tsx              # Required root route (id __root__)
+  index.tsx               # "/"
+  about.tsx               # "/about"
   products/
-    index.tsx         # "/products"
-    route.tsx         # Layout for products subtree
-    $productId.tsx    # Dynamic route ("/products/:productId")
-    $productId/
-      index.tsx       # "/products/:productId"
-      reviews.tsx     # "/products/:productId/reviews"
-  settings/
-    route.tsx         # Pathless layout (no URL segment)
-    profile.tsx       # "/settings/profile"
-  [...catchAll].tsx   # Catch-all / 404 ("/*")
+    route.tsx             # "/products" — the folder's segment; parent for the folder's children
+    index.tsx             # "/products/" (distinct id from /products)
+    $productId.tsx        # "/products/:productId"
+    $productId/           # nests under $productId.tsx (sibling file is the parent)
+      reviews.tsx         # "/products/:productId/reviews"
+  $.tsx                   # Catch-all "/*" (must be terminal), params { _splat }
 ```
 
 ### Naming Rules
@@ -48,24 +44,23 @@ src/routes/
 | Pattern | Example | Matches | Params |
 |---------|---------|---------|--------|
 | Static | `about.tsx` | `/about` | — |
-| Index | `index.tsx` | `/` (or parent `/parent`) | — |
+| Index | `index.tsx` | `/` (or parent `/products/`) | — |
 | Dynamic | `$productId.tsx` | `/products/123` | `{ productId: "123" }` |
-| Catch-all | `[...catchAll].tsx` | `/*` | `{ catchAll: "path/to/match" }` |
-| Pathless layout | `route.tsx` | (no segment) | — |
+| Catch-all | `$.tsx` | `/*` | `{ _splat: "path/to/match" }` |
+| Folder parent | `products/route.tsx` | `/products` | folder's own segment |
+| Nested folder | `$productId/reviews.tsx` next to `$productId.tsx` | `/products/:productId/reviews` | merged params |
+
+Folders with children require a `route.tsx` parent — unless a sibling route file with the same segment name exists (`$productId.tsx` next to `$productId/`), which then acts as the parent. `index.tsx` shares the parent's URL but has a distinct route ID (`/products/` vs `/products`).
 
 ### Route Module Exports
 
 ```tsx
 // src/routes/products/$productId.tsx
 import { createFileRoute } from 'typed-router';
-import { ProductDetail } from './ProductDetail';
 
-export const route = createFileRoute('/products/$productId')({
-  component: ProductDetail,
-  loader: async ({ params }) => {
-    const product = await fetchProduct(params.productId);
-    return { product };
-  },
+export const Route = createFileRoute('/products/$productId')({
+  component: lazy(() => import('./ProductDetail')),
+  loader: async ({ params, signal }) => fetchProduct(params.productId, { signal }),
   staleTime: 60_000,
   beforeLoad: async ({ params, redirect }) => {
     if (!params.productId) return redirect('/products');
@@ -101,42 +96,46 @@ export default defineConfig({
 ```tsx
 // src/main.tsx
 import { Router } from 'typed-router';
-import { routes } from 'typed-router:routes'; // Generated
+import { routeTree } from './routeTree.gen'; // Generated — do not edit
 
-function App() {
-  return <Router routes={routes} />;
-}
+createRoot(...).render(<Router routes={routeTree} />);
 ```
 
 ```tsx
 // src/routes/index.tsx
 import { createFileRoute } from 'typed-router';
 
-export const route = createFileRoute('/')({
+// The generator validates this exact export and ID against the file path
+export const Route = createFileRoute('/')({
   component: () => <h1>Home</h1>,
 });
 ```
 
 ## Typed Navigation
 
+Type checking is always on: `Link` and `navigate` validate route existence, required parameter names, and reject extra parameters — against the generated `RouteId` union. Raw URLs are an explicit escape hatch, not a fallback level.
+
 ```tsx
-import { Link, useNavigate, useParams } from 'typed-router';
-import type { RouteParams } from 'typed-router:routes';
+import { Link, useNavigate } from 'typed-router';
 
-// Link with full type checking
-<Link path="/products/$productId" params={{ productId: '123' }} /> // ✅
-<Link path="/products/$productId" params={{ id: '123' }} />        // ❌ wrong param name
-<Link path="/products/$productId" />                                // ❌ missing params
-<Link path="/unknown" />                                            // ❌ route doesn't exist
+// Typed (route IDs are generated from your files)
+<Link to="/products/$productId" params={{ productId: '123' }} />   // ✅
+<Link to="/products/$productId" params={{ id: '123' }} />          // ❌ wrong param name
+<Link to="/products/$productId" />                                 // ❌ missing params
+<Link to="/unknown" />                                             // ❌ route doesn't exist
+<Link to="/products" params={{ x: 1 }} />                          // ❌ static route takes no params
 
-// Imperative navigation
+// Imperative navigation — same checking
 const navigate = useNavigate();
-navigate({ path: '/products/$productId', params: { productId: '123' } });
+navigate({ to: '/products/$productId', params: { productId: '123' } });
 
-// Typed params in components
-const { productId } = useParams<'/products/$productId'>();
-// or infer from current route
-const params = useParams(); // { productId: string } | {}
+// Escape hatch: raw URL, intentionally unchecked
+<Link toRaw="/runtime-generated/path" />
+navigate('/runtime/path?x=1');
+
+// Typed params inside the route's own file
+const { productId } = Route.useParams(); // typed from the route ID
+const data = Route.useLoaderData();      // typed from the loader's return type
 ```
 
 ## Commands
@@ -145,7 +144,7 @@ const params = useParams(); // { productId: string } | {}
 # Generate route tree and types (run before TypeScript check)
 npx typed-router generate
 
-# Dev server
+# Dev server — regenerates the route tree, then opens the browser on the playground
 npm run dev
 
 # Build
@@ -289,9 +288,9 @@ All hooks work **outside `<Router>`** — state lives in global stores.
 
 ```tsx
 <Link
-  to="/plain/url"                    // Raw URL (no type checking)
-  path="/products/$productId"        // Typed route pattern
-  params={{ productId: '123' }}      // Required if path has params
+  to="/products/$productId"          // Typed: generated route ID (with params if required)
+  params={{ productId: '123' }}       // Required if the ID has $segments
+  toRaw="/plain/url"                 // Escape hatch: raw URL, unchecked
   search={{ tab: 'details' }}
   state={{ from: 'home' }}
   prefetch="hover"
@@ -306,26 +305,12 @@ All hooks work **outside `<Router>`** — state lives in global stores.
 />
 ```
 
-## Type Safety Levels
-
-| Level | Setup | Checks |
-|-------|-------|--------|
-| **0** | None | Plain `<Link to="...">` — works, no types |
-| **1** | `path` + `params` | Internal consistency: params match path pattern |
-| **2** | Wrapper component | Named routes, no union |
-| **3** | **Generated union** | **Route existence, param names, param presence** |
-
-Level 3 is the default when using the Vite plugin — the generated `RouteId` union enables full checking.
-
 ## Generated Files
 
-The Vite plugin generates (do not edit manually):
+The generator produces a single file (do not edit manually):
 
 ```
-src/
-  typed-router.d.ts          # TypeScript declarations (RouteId, RouteParams, etc.)
-  typed-router-routes.ts     # Route tree for runtime
-  typed-router-routes.js     # Route tree (JS for runtime)
+src/routeTree.gen.ts     # RouteId union (types) + routeTree (runtime tree)
 ```
 
 ## License

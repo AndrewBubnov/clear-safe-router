@@ -286,7 +286,7 @@ describe('navigation edge cases', () => {
     await screen.findByText('Home');
     await act(async () => { await routerRuntime.navigate('/scroll'); });
     await screen.findByText('Scroll');
-    expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 0 });
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, top: 0, behavior: 'auto' });
     scrollTo.mockClear();
     await act(async () => { await routerRuntime.navigate('/'); });
     await act(async () => {
@@ -294,7 +294,61 @@ describe('navigation edge cases', () => {
       window.history.back();
       await popped;
     });
-    await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ left: 12, top: 34 }));
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ left: 12, top: 34, behavior: 'auto' }));
+  });
+
+  it('captures scroll positions when leaving a route via browser history buttons, not only via Link navigation', async () => {
+    const scrollTo = vi.fn();
+    Object.defineProperty(window, 'scrollTo', { value: scrollTo, configurable: true });
+    const setScroll = (x: number, y: number) => {
+      Object.defineProperty(window, 'scrollX', { value: x, configurable: true });
+      Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+    };
+    setScroll(0, 0);
+    const tree = root([
+      node('/', '/', { component: () => <p>Home</p> }),
+      node('/scroll', '/scroll', { scrollRestoration: true, component: () => <p>Scroll</p> }),
+    ]);
+    renderAt('/', tree);
+    await screen.findByText('Home');
+    await act(async () => { await routerRuntime.navigate('/scroll'); });
+    await screen.findByText('Scroll');
+    scrollTo.mockClear();
+
+    // Возврат на Home кнопкой истории (не Link): уход со scroll-страницы через popstate.
+    await act(async () => {
+      const popped = new Promise<void>(resolve => window.addEventListener('popstate', () => resolve(), { once: true }));
+      window.history.back();
+      await popped;
+    });
+    await screen.findByText('Home');
+
+    // Снова на scroll кнопкой истории, позиция меняется...
+    await act(async () => {
+      const popped = new Promise<void>(resolve => window.addEventListener('popstate', () => resolve(), { once: true }));
+      window.history.forward();
+      await popped;
+    });
+    await screen.findByText('Scroll');
+    setScroll(99, 88);
+
+    // ...и уходим кнопкой истории: capture на popstate-пути обязан сохранить {99, 88}.
+    await act(async () => {
+      const popped = new Promise<void>(resolve => window.addEventListener('popstate', () => resolve(), { once: true }));
+      window.history.back();
+      await popped;
+    });
+    await screen.findByText('Home');
+
+    // Возврат на scroll кнопкой истории: восстанавливаются НОВЫЕ позиции, а не {12, 34}.
+    await act(async () => {
+      const popped = new Promise<void>(resolve => window.addEventListener('popstate', () => resolve(), { once: true }));
+      window.history.forward();
+      await popped;
+    });
+    await screen.findByText('Scroll');
+    await waitFor(() => expect(scrollTo).toHaveBeenLastCalledWith({ left: 99, top: 88, behavior: 'auto' }));
+    expect(scrollTo).not.toHaveBeenCalledWith({ left: 12, top: 34, behavior: 'auto' });
   });
 
   it('stores search params and navigation state', async () => {

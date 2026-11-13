@@ -1,5 +1,7 @@
 import type { LoaderState } from './core-types';
 
+export const LAZY_MARKER = '__typed_router_lazy__';
+
 export const EMPTY_LOADER_STATE = {} as LoaderState;
 export const STANDARD_PREFETCH_DELAY = 150;
 export const WINDOW_TOP = '__window_top__';

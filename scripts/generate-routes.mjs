@@ -17,20 +17,30 @@ if (!fs.existsSync(path.join(routesRoot, '__root.tsx'))) {
 }
 
 const records = [];
+const consumedFiles = new Set();
 const scanFolder = (folder, parentId, segments) => {
   for (const entry of sortedEntries(folder)) {
     if (entry.isDirectory()) {
       const routeFile = path.join(folder, entry.name, 'route.tsx');
-      if (!fs.existsSync(routeFile)) fail(routeFile, `folder "${entry.name}" has child routes but no route.tsx parent`);
+      let parentFile = routeFile;
+      if (!fs.existsSync(routeFile)) {
+        // A folder named like a sibling route file (e.g. `$nestId/` next to `$nestId.tsx`)
+        // nests under that file's route instead of requiring its own route.tsx.
+        const sibling = path.join(folder, `${entry.name}.tsx`);
+        if (fs.existsSync(sibling)) parentFile = sibling;
+        else fail(routeFile, `folder "${entry.name}" has child routes but no route.tsx parent`);
+      }
       const segment = entry.name;
       if (!/^(?:\$[A-Za-z][A-Za-z0-9_]*|[A-Za-z0-9._~-]+)$/.test(segment) || segment === '.' || segment === '..') {
-        fail(routeFile, `invalid route folder name "${segment}"`);
+        fail(parentFile, `invalid route folder name "${segment}"`);
       }
-      const item = addRecord(routeFile, [...segments, segment], parentId, 'route');
+      const item = addRecord(parentFile, [...segments, segment], parentId, 'route');
+      consumedFiles.add(parentFile);
       scanFolder(path.join(folder, entry.name), item.id, item.segments);
       continue;
     }
     if (!entry.isFile() || !entry.name.endsWith('.tsx') || entry.name === '__root.tsx' || entry.name === 'route.tsx') continue;
+    if (consumedFiles.has(path.join(folder, entry.name))) continue;
     if (entry.name === 'index.tsx') {
       addRecord(path.join(folder, entry.name), segments, parentId, 'index');
       continue;

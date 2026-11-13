@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from '../index';
+import { createFileRoute } from '../index';
+import { PlaygroundHome } from '../playground/PlaygroundHome';
 
 export const Route = createFileRoute('/')({
-  component: () => <main><h1>Typed Router</h1><Link to="/about">About</Link></main>,
+  component: PlaygroundHome,
 });

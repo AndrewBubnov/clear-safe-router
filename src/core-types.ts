@@ -1,7 +1,10 @@
 import type { Store, useGlobalState } from './create';
 
 export const LAZY_MARKER = Symbol('typed-router-lazy');
-export type SetStateFn<T> = (action: T | ((prevState: T) => T)) => void;
+export type SetStateFn<T> = {
+  (action: T): void;
+  (action: (prevState: T) => T): void;
+};
 export type LazyComponent = { readonly [LAZY_MARKER]: true; importFn: () => Promise<{ default: unknown }> };
 export type RenderElement = unknown;
 export type ScrollRestorationBehavior = 'auto' | 'smooth' | 'instant';

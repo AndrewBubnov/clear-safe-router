@@ -1,8 +1,5 @@
-import { createFileRoute, Link } from '../index';
+import { createFileRoute, lazy } from '../index';
 
 export const Route = createFileRoute('/$')({
-  component: () => {
-    const { _splat } = Route.useParams();
-    return <main><h1>Catch all</h1><p>path: {_splat}</p><Link to="/">Home</Link></main>;
-  },
+  component: lazy(() => import('../playground/NotFound')),
 });
