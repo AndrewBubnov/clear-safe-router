@@ -173,6 +173,64 @@ describe('cache and invalidation', () => {
     expect(seen).toContain('post:7');
   });
 
+  it('awaits an in-flight load and refetches instead of returning its result', async () => {
+    let resolvePrefetch!: (value: string) => void;
+    let calls = 0;
+    const tree = root([
+      node('/items', '/items', {
+        loader: () => {
+          calls++;
+          if (calls === 1) return new Promise<string>(resolve => { resolvePrefetch = resolve; });
+          return Promise.resolve('fresh data');
+        },
+      }),
+    ]);
+    setRouterConfig(tree);
+    await act(async () => { void routerRuntime.prefetch('/items'); });
+    let result!: { data: unknown; error: Error | null }[];
+    await act(async () => {
+      const pending = routerRuntime.invalidate('/items');
+      resolvePrefetch('stale prefetch');
+      result = await pending;
+    });
+    expect(calls).toBe(2);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ path: '/items', data: 'fresh data', error: null });
+  });
+
+  it('invalidates every cached search variant of a dynamic path', async () => {
+    const loader = vi.fn(async ({ params, search }: { params: { id: string }; search: Record<string, string> }) => `user:${params.id}@${search.tab ?? ''}`);
+    const tree = root([
+      node('/users/$id', '/users/:id', { loader, staleTime: Infinity }),
+    ]);
+    setRouterConfig(tree);
+    await act(async () => { await routerRuntime.navigate('/users/1?tab=a'); });
+    await act(async () => { await routerRuntime.navigate('/users/1?tab=b'); });
+    await act(async () => { await routerRuntime.navigate('/users/2'); });
+    loader.mockClear();
+    let result!: { path: string }[];
+    await act(async () => { result = await routerRuntime.invalidate('/users/1?tab=a'); });
+    expect(result.map(entry => entry.path).sort()).toEqual(['/users/1?tab=a', '/users/1?tab=b']);
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(loader.mock.calls.every(([args]) => args.params.id === '1')).toBe(true);
+  });
+
+  it('treats bracket patterns as cache-only targets without fetching the pattern', async () => {
+    const loader = vi.fn(async ({ params }: { params: { id: string } }) => `user:${params.id}`);
+    const tree = root([
+      node('/users/$id', '/users/:id', { loader, staleTime: Infinity }),
+    ]);
+    setRouterConfig(tree);
+    await act(async () => { await routerRuntime.navigate('/users/1'); });
+    await act(async () => { await routerRuntime.navigate('/users/2'); });
+    loader.mockClear();
+    let result!: { path: string }[];
+    await act(async () => { result = await routerRuntime.invalidate('/users/[id]', { force: true }); });
+    expect(result.map(entry => entry.path).sort()).toEqual(['/users/1', '/users/2']);
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(loader.mock.calls.every(([args]) => !String(args.params.id).includes('['))).toBe(true);
+  });
+
   it('revalidates the active route in the background after a successful action', async () => {
     let calls = 0;
     const tree = root([

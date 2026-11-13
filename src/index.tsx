@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEventHandler, type ReactElement, type ReactNode, type MouseEvent } from 'react';
 import type { CacheSnapshot, DefaultPrefetch, LinkProps, LinkState, RouteStatus as RouterStatus, RouterProps } from './types';
 import { RouteMatchRoot, RouteOutlet } from './route';
-import { configureRouter, handlePopState, mergeContext, processBlockedTarget, resetBlockedTarget, resolveTarget, routerConfig, routerRuntime, setBlockerStatus, setRouterConfig, setupRevalidation, submitRouteAction, updateSearchParams, restoreScrollNow, useBlockedTargetValue, useBlockerStateValue, useCacheSnapshotValue, useLoaderStateValue, useRouterContext, useRouterSnapshot } from './runtime';
+import { configureRouter, handlePopState, mergeContext, processBlockedTarget, resetBlockedTarget, resolveTarget, routerConfig, routerRuntime, setBlockerStatus, setRouterConfig, setupRevalidation, submitRouteAction, syncCacheSnapshot, updateSearchParams, restoreScrollNow, useBlockedTargetValue, useBlockerStateValue, useCacheSnapshotValue, useLoaderStateValue, useRouterContext, useRouterSnapshot } from './runtime';
 
 export type { CacheReason, CacheSnapshot, CacheSnapshotEntry, ElementProps, FileRouteOptions, LazyComponent, LinkProps, LinkState, InvalidateResult, NavigateTarget, ParamsFor, Retry, RouteId, RouteNode, RouteStatus, RouterLocation, RouterProps, RouterRuntime, SearchParams, TypedDestination, DefaultPrefetch } from './types';
 export { createFileRoute, Outlet, lazy } from './route';
 export { useRouterContext } from './runtime';
-export { routerRuntime };
+export { routerRuntime, syncCacheSnapshot };
 
 const isMobile = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 768px)').matches;
 
