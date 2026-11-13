@@ -1,0 +1,51 @@
+{
+  "name": "typed-router",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "File-based React SPA router with compile-time type-safe navigation",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./types/index.d.ts" },
+    "./vite": { "import": "./dist/vite-plugin/index.js", "types": "./types/vite-plugin/index.d.ts" }
+  },
+  "scripts": {
+    "dev": "npm run router:generate && vite",
+    "build": "npm run router:generate && tsc -b --force && tsc --noEmit -p tests/types/tsconfig.json && vite build --config vite.lib.config.ts && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "npm run router:generate && vitest run",
+    "test:run": "npm test",
+    "test:coverage": "npm run router:generate && vitest run --coverage",
+    "test:e2e": "playwright test",
+    "router:generate": "node scripts/generate-routes.mjs",
+    "generate": "npm run router:generate",
+    "typecheck": "npm run router:generate && tsc -b --force && tsc --noEmit -p tests/types/tsconfig.json"
+  },
+  "keywords": ["react", "router", "routing", "file-based", "typescript", "type-safe"],
+  "license": "MIT",
+  "dependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.40.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.0",
+    "@types/jsdom": "^21.1.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.0",
+    "globals": "^15.0.0",
+    "jsdom": "^25.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "peerDependencies": { "react": ">=18.0.0", "react-dom": ">=18.0.0" }
+}
