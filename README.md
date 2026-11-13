@@ -1,5 +1,7 @@
 # Typed Router
 
+[![CI](https://github.com/AndrewBubnov/clear-safe-router/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/AndrewBubnov/clear-safe-router/actions/workflows/ci.yml)
+
 A lightweight, provider-free React SPA router with **file-based routing** and **compile-time type-safe navigation**.
 
 Built on the core runtime from [clear-react-router](https://github.com/AndrewBubnov/clear-react-router) — nested routes, loaders with caching, actions, blockers, prefetch, scroll restoration — plus a Vite plugin that generates the route tree and TypeScript types from your file structure.
