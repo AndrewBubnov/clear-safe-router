@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
-import { Link, useLoaderState, useParams } from '../index';
+import { Link, Outlet, useLoaderState, useParams } from '../index';
 import { getCallCount, randomIds } from './api';
 
 const NestChildPage = () => {
-	const { nestId } = useParams();
+	const { nestId, itemId } = useParams();
 	const { data } = useLoaderState<{ description: string }>();
 	const itemIds = useMemo(() => randomIds('item'), []);
+	// This route owns nested item routes: render the item page instead of the nest page.
+	if (itemId) return <Outlet />;
 	return (
 		<div className="pg-wrap">
 			<h1>Nest {nestId}</h1>

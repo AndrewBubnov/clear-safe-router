@@ -146,6 +146,6 @@ export type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | '
 export type NavigateTarget = TypedDestination | string | -1 | ({ toRaw: string } & NavigateOptions);
 export type RouterRuntime = {
   navigate(target: NavigateTarget): Promise<void>;
-  invalidate(target?: string | { to: RouteId; params?: Record<string, string> }, options?: { withChildren?: boolean; staleOnly?: boolean; force?: boolean }): Promise<InvalidateResult[]>;
+  invalidate(target?: string | string[] | { to: RouteId; params?: Record<string, string> }, options?: { withChildren?: boolean; staleOnly?: boolean; force?: boolean }): Promise<InvalidateResult[]>;
   prefetch(target: string | { to: RouteId; params?: Record<string, string> }): Promise<void>;
 };

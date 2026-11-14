@@ -1,7 +1,7 @@
 import type { RouterLocation, InvalidateOptions, InvalidateResult, RouterRuntime, RouteNode } from '../types';
-import { activeControllerRef, blockerStateStore, blockedTargetStore, cache, contextStore, dataStore, flights, loaderErrors, beforeLoadErrors, navigationSeqRef, routeErrors, routesRef, snapshot, snapshotRef, suppressPopstateRef, updateSnapshot, initialLocation, scrollMap } from './state';
+import { activeControllerRef, blockerStateStore, blockedTargetStore, cache, cacheSnapshotStore, contextStore, dataStore, flights, loaderErrors, beforeLoadErrors, navigationSeqRef, routeErrors, routeKey, routesRef, snapshot, snapshotRef, suppressPopstateRef, updateSnapshot, initialLocation, scrollMap } from './state';
 import { emit as emitSnapshot, isCacheFresh, runLoader, clearCacheAndFlights, prefetchLazyChunk } from './cache';
-import { flatten, matchRoutes, splitLocation, resolveTarget, toError, isSameLocation, matchesPath, parseCacheKey, splitUrl } from './match';
+import { matchRoutes, splitLocation, resolveTarget, toError, isSameLocation, matchesPath, parseCacheKey, splitUrl } from './match';
 import { loadLocation, stopPolling } from './navigate';
 import { captureScroll } from './scroll';
 import { routerConfig } from './config';
@@ -11,7 +11,12 @@ export const navigate = async (target: Parameters<RouterRuntime['navigate']>[0])
   const next = typeof target === 'string' ? splitLocation(target) : resolveTarget(target);
   await loadLocation(next);
 };
-export const invalidate = async (target?: string | { to: string; params?: Record<string, string> }, options?: InvalidateOptions): Promise<InvalidateResult[]> => {
+export const invalidate = async (target?: string | string[] | { to: string; params?: Record<string, string> }, options?: InvalidateOptions): Promise<InvalidateResult[]> => {
+  if (Array.isArray(target)) {
+    const results: InvalidateResult[] = [];
+    for (const entry of target) results.push(...await invalidate(entry, options));
+    return results;
+  }
   let targetPath: string;
   let targetSearch: string | undefined;
   if (target === undefined) {
@@ -47,29 +52,10 @@ export const invalidate = async (target?: string | { to: string; params?: Record
     const matches = matchRoutes(location.pathname, location, routesRef.current);
     const leaf = matches.at(-1);
     // Original semantics: a concrete path invalidates its matched route only;
-    // withChildren walks the route's descendants (children), not its ancestors.
-    const targets: typeof matches = [];
-    if (leaf) {
-      targets.push(leaf);
-      if (options?.withChildren) {
-        // Descendants are collected across the whole tree by ID prefix, so they are
-        // found even when the matched leaf is an index sibling of the parent route.
-        const collectDescendants = (route: RouteNode) => {
-          for (const child of route.children) {
-            targets.push({ route: child, params: {}, key: `${child.id}|${location.pathname}${location.search}` });
-            collectDescendants(child);
-          }
-        };
-        collectDescendants(leaf.route);
-        const all = flatten(routesRef.current!);
-        for (const { route } of all) {
-          if (route.id !== leaf.route.id && route.id.startsWith(`${leaf.route.id}/`)) {
-            targets.push({ route, params: {}, key: `${route.id}|${location.pathname}${location.search}` });
-          }
-        }
-      }
-    }
-    for (const match of targets) {
+    // withChildren widens the cached-path match to a prefix, so every descendant
+    // URL is revalidated at its own location with its own params.
+    if (!leaf) continue;
+    for (const match of [leaf]) {
       const key = `${match.route.id}|${location.pathname}${location.search}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -90,11 +76,14 @@ export const invalidate = async (target?: string | { to: string; params?: Record
         updateSnapshot(previous => {
           const data = new Map(dataStore.getState());
           const errors = new Map(previous.errors);
+          errors.delete(match.route.id);
           if (match.route.options.loader) data.set(key, value);
           else data.delete(key);
           dataStore.setState(data);
           return { ...previous, data, errors, status: errors.size ? 'error' as const : 'active' as const };
         });
+        loaderErrors.delete(match.route.id);
+        beforeLoadErrors.delete(match.route.id);
         emitSnapshot();
       } catch (error) {
         const normalized = toError(error);
@@ -169,6 +158,7 @@ export const resetRouterState = () => {
   contextStore.setState({});
   blockerStateStore.setState('unblocked');
   blockedTargetStore.setState(null);
+  cacheSnapshotStore.setState([]);
   suppressPopstateRef.current = false;
   routesRef.current = undefined;
   navigationSeqRef.current++;
@@ -199,9 +189,25 @@ export const updateSearchParams = (
     return params;
   })();
   const search = nextSearch.toString();
-  const location = { ...snapshot().location, search: search ? `?${search}` : '' };
+  const previousLocation = snapshot().location;
+  const location = { ...previousLocation, search: search ? `?${search}` : '' };
   history.replaceState(location.state ?? null, '', `${location.pathname}${location.search}`);
   updateSnapshot(previous => ({ ...previous, location }));
+  // Keep the data rendered for the active matches: a search-only update must not
+  // blank the page until the next invalidation refetches with the new search.
+  if (`${previousLocation.pathname}${previousLocation.search}` !== `${location.pathname}${location.search}`) {
+    dataStore.setState(previous => {
+      const next = new Map(previous);
+      for (const match of snapshot().matches) {
+        const oldKey = routeKey(match.route, previousLocation);
+        const newKey = routeKey(match.route, location);
+        if (oldKey === newKey || !previous.has(oldKey)) continue;
+        next.set(newKey, previous.get(oldKey));
+        next.delete(oldKey);
+      }
+      return next;
+    });
+  }
   emitSnapshot();
 };
 export const submitRouteAction = async (name: string, input: Record<string, unknown>) => {

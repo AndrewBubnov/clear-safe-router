@@ -1,4 +1,4 @@
-import { Suspense, useContext, useEffect, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import type { RouteNode } from '../types';
 import { restoreScrollNow, useRouterSnapshot } from '../runtime';
 import { dataStore } from '../runtime/state';
@@ -32,16 +32,18 @@ export const RouteOutlet = ({ index }: { index: number }) => {
   const loading = state.status === 'pending' || state.status === 'optimistic';
   const pending = loading && !!route.options.loader && dataForRoute === undefined;
   const pendingNode = route.options.pendingFallback ?? defaults.pendingFallback ?? null;
-  let content: ReactNode = null;
-  if (error) {
-    const ErrorView = resolveComponent(route.options.errorFallback) ?? resolveComponent(defaults.errorFallback);
-    content = ErrorView ? <Suspense fallback={pendingNode}><ErrorView error={error} /></Suspense> : <p role="alert">{error.message}</p>;
-  } else if (pending) {
-    content = pendingNode;
-  } else {
+  const matchesLength = state.matches.length;
+  // Element identity is kept stable across data-only updates (e.g. polling ticks) so the
+  // rendered subtree is not re-rendered as a side effect of this route's data subscription.
+  const content: ReactNode = useMemo(() => {
+    if (error) {
+      const ErrorView = resolveComponent(route.options.errorFallback) ?? resolveComponent(defaults.errorFallback);
+      return ErrorView ? <Suspense fallback={pendingNode}><ErrorView error={error} /></Suspense> : <p role="alert">{error.message}</p>;
+    }
+    if (pending) return pendingNode;
     const Component = resolveComponent(route.options.component);
-    content = Component ? <Suspense fallback={pendingNode}><Component /></Suspense> : index < state.matches.length - 1 ? <Outlet /> : null;
-  }
+    return Component ? <Suspense fallback={pendingNode}><Component /></Suspense> : index < matchesLength - 1 ? <Outlet /> : null;
+  }, [route, error, pending, pendingNode, defaults, index, matchesLength]);
   const body = (
     <MatchIndex.Provider value={index}>
       <ScrollRestore route={route as RouteNode} />

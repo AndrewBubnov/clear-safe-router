@@ -14,6 +14,29 @@ export const useRouteData = (id: string) => {
   const data = useSyncExternalStore(dataStore.subscribe, () => (key ? dataStore.getState().get(key) : undefined), () => (key ? dataStore.getState().get(key) : undefined));
   return { params: match?.params ?? {}, search: Object.fromEntries(new URLSearchParams(state.location.search)), data, status: state.status, error: state.errors.get(id) };
 };
+/**
+ * Link subscriptions are selector-based: the snapshot is reduced to its
+ * `isActive`/`isPending` flags so navigation re-renders only the links whose
+ * state actually flips (parity with the original clear-router Link).
+ */
+export const useLinkState = (pathname: string, search: string, exact: boolean) => {
+  const select = () => {
+    const state = snapshot();
+    const current = `${state.location.pathname}${state.location.search}`;
+    const target = `${pathname}${search}`;
+    const active = search === ''
+      ? exact
+        ? state.location.pathname === pathname
+        : pathname === '/'
+          ? state.location.pathname === '/'
+          : state.location.pathname === pathname || state.location.pathname.startsWith(`${pathname}/`)
+      : current === target;
+    const pending = current === target && state.status === 'pending';
+    return `${active ? 1 : 0}${pending ? 1 : 0}`;
+  };
+  const flags = useSyncExternalStore(subscribe, select, select);
+  return { isActive: flags[0] === '1', isPending: flags[1] === '1' };
+};
 export const useRouterContext = () => {
   const context = useSyncExternalStore(contextStore.subscribe, contextStore.getState, contextStore.getState);
   return { context, setContext: contextStore.setState };

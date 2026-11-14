@@ -10,6 +10,13 @@ const PRICES: Record<string, number> = {
 
 let tick = 0;
 const loaderCalls: Record<string, number> = {};
+const loaderDone: Record<string, number> = {};
+
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+	const bridge = window as unknown as { __loaderCalls?: Record<string, number>; __loaderDone?: Record<string, number> };
+	bridge.__loaderCalls = loaderCalls;
+	bridge.__loaderDone = loaderDone;
+}
 
 export const getCallCount = (key: string) => loaderCalls[key] ?? 0;
 
@@ -38,6 +45,7 @@ export const fetchDoomed = async () => {
 export const fetchSlow = async () => {
 	const n = trackCall('slow');
 	await delay(800);
+	loaderDone.slow = (loaderDone.slow ?? 0) + 1;
 	return `Slow payload (call ${n})`;
 };
 

@@ -14,6 +14,7 @@ import {
   useLoaderStateValue,
   useBlockerStateValue,
   useBlockedTargetValue,
+  useLinkState,
 } from './hooks';
 
 export const routerRuntime: RouterRuntime = { navigate, invalidate, prefetch };
@@ -23,4 +24,4 @@ export const clearBlockedTarget = () => blockedTargetStore.setState(null);
 export const resetBlockedTarget = () => { blockedTargetStore.setState(null); emitSnapshot(); };
 export { configureRouter, routerConfig, handlePopState, processBlockedTarget, setRouterConfig, resetRouterState, setupRevalidation, submitRouteAction, updateSearchParams, restoreScrollNow, resolveTarget, syncCacheSnapshot, navigate, invalidate, prefetch };
 export const interpolateRoute = interpolate;
-export { useRouteData, useRouterSnapshot, useRouterContext, mergeContext, useCacheSnapshotValue, useLoaderStateValue, useBlockerStateValue, useBlockedTargetValue };
+export { useRouteData, useRouterSnapshot, useRouterContext, useLinkState, mergeContext, useCacheSnapshotValue, useLoaderStateValue, useBlockerStateValue, useBlockedTargetValue };

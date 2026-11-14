@@ -6,6 +6,7 @@ import { formatSearch, matchRoutes, sleep, splitLocation, toError } from './matc
 import { routerConfig, type AfterLoadHook, type BeforeLoadHook } from './config';
 
 let pollTimer: ReturnType<typeof setInterval> | undefined;
+const unmatchedRouteWarnings = new Set<string>();
 export const commit = (next: RouterSnapshot, replace = false, fromPop = false) => {
   const write = () => {
     const url = `${next.location.pathname}${next.location.search}`;
@@ -18,8 +19,12 @@ export const commit = (next: RouterSnapshot, replace = false, fromPop = false) =
   };
   if (!fromPop && routerConfig.isAnimated && typeof document !== 'undefined' && document.startViewTransition) {
     if (routerConfig.animationDuration) document.documentElement.style.setProperty('--pg-transition-duration', `${routerConfig.animationDuration}ms`);
-    const transition = document.startViewTransition(write);
-    transition.finished.catch(() => {});
+    try {
+      const transition = document.startViewTransition(write);
+      transition.finished.catch(() => {});
+    } catch {
+      write();
+    }
   } else write();
 };
 export const loadLocation = async (location: RouterLocation, options: { replace?: boolean; fromPop?: boolean } = {}) => {
@@ -31,6 +36,13 @@ export const loadLocation = async (location: RouterLocation, options: { replace?
   const controller = new AbortController();
   activeControllerRef.current = controller;
   const matches = matchRoutes(location.pathname, location, routesRef.current);
+  if (import.meta.env.DEV && matches.length === 0 && !unmatchedRouteWarnings.has(location.pathname)) {
+    unmatchedRouteWarnings.add(location.pathname);
+    console.warn(
+      `[typed-router] No route matched "${location.pathname}". ` +
+      'Add a catch-all route ({ path: \'*\' }) or check the route path.'
+    );
+  }
   const data = new Map<string, unknown>();
   const errors = new Map<string, Error>();
   let needsLoading = false;
@@ -101,7 +113,8 @@ export const loadLocation = async (location: RouterLocation, options: { replace?
     if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
     const status = errors.size ? 'error' : 'active';
     setSnapshot({ location, status, matches, data, errors });
-    if (options.fromPop) { history.replaceState(location.state ?? null, '', `${location.pathname}${location.search}`); dataStore.setState(new Map(data)); emit(); }
+    dataStore.setState(new Map(data));
+    if (options.fromPop) { history.replaceState(location.state ?? null, '', `${location.pathname}${location.search}`); emit(); }
     else commit({ location, status, matches, data, errors }, options.replace, false);
     if (leaf) {
       const hooks: AfterLoadHook[] = [];
@@ -119,7 +132,8 @@ export const loadLocation = async (location: RouterLocation, options: { replace?
     const fallback = matches.at(-1);
     if (fallback) errors.set(fallback.route.id, toError(error));
     setSnapshot({ location, status: 'error', matches, data, errors });
-    if (options.fromPop) { history.replaceState(location.state ?? null, '', `${location.pathname}${location.search}`); dataStore.setState(new Map(data)); emit(); }
+    dataStore.setState(new Map(data));
+    if (options.fromPop) { history.replaceState(location.state ?? null, '', `${location.pathname}${location.search}`); emit(); }
     else commit({ location, status: 'error', matches, data, errors }, options.replace, false);
   }
 };

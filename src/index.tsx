@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type SubmitEvent, type MouseEventHandler, type ReactElement, type ReactNode, type MouseEvent } from 'react';
 import type { CacheSnapshot, DefaultPrefetch, LinkProps, LinkState, RouteStatus as RouterStatus, RouterProps } from './types';
 import { RouteMatchRoot, RouteOutlet } from './route';
-import { configureRouter, handlePopState, mergeContext, processBlockedTarget, resetBlockedTarget, resolveTarget, routerConfig, routerRuntime, setBlockerStatus, setRouterConfig, setupRevalidation, submitRouteAction, syncCacheSnapshot, updateSearchParams, restoreScrollNow, useBlockedTargetValue, useBlockerStateValue, useCacheSnapshotValue, useLoaderStateValue, useRouterContext, useRouterSnapshot } from './runtime';
+import { configureRouter, handlePopState, mergeContext, processBlockedTarget, resetBlockedTarget, resolveTarget, routerConfig, routerRuntime, setBlockerStatus, setRouterConfig, setupRevalidation, submitRouteAction, syncCacheSnapshot, updateSearchParams, restoreScrollNow, useBlockedTargetValue, useBlockerStateValue, useCacheSnapshotValue, useLinkState, useLoaderStateValue, useRouterContext, useRouterSnapshot } from './runtime';
 
 export type { CacheReason, CacheSnapshot, CacheSnapshotEntry, ElementProps, FileRouteOptions, LazyComponent, LinkProps, LinkState, InvalidateResult, NavigateTarget, ParamsFor, Retry, RouteApi, RouteId, RouteNode, RouteStatus, RouterLocation, RouterProps, RouterRuntime, SearchParams, TypedDestination, DefaultPrefetch } from './types';
 export { createFileRoute, getRoute, Outlet, lazy } from './route';
@@ -50,6 +50,9 @@ export const Router = ({
     enableCacheSnapshot,
   });
   useEffect(() => {
+    if (enableCacheSnapshot) syncCacheSnapshot();
+  }, [enableCacheSnapshot]);
+  useEffect(() => {
     if (context) mergeContext(context);
     const onPopState = () => { void handlePopState(); };
     window.addEventListener('popstate', onPopState);
@@ -97,15 +100,15 @@ export const Link = (props: LinkProps) => {
   const resolved = resolveTarget({ to: to as string | undefined, toRaw, params, search, state });
   const targetPath = `${resolved.pathname}${resolved.search}`;
   const anchorRef = useRef<HTMLAnchorElement>(null);
-  const state_ = useRouterSnapshot();
-  const currentPath = `${state_.location.pathname}${state_.location.search}`;
-  const isActive = resolved.search === '' || resolved.search === undefined
-    ? exact ? state_.location.pathname === resolved.pathname : resolved.pathname === '/'
-      ? state_.location.pathname === '/'
-      : state_.location.pathname === resolved.pathname || state_.location.pathname.startsWith(`${resolved.pathname}/`)
-    : currentPath === targetPath;
-  const isPending = currentPath === targetPath && state_.status === 'pending';
-  const strategy: 'hover' | 'render' | 'viewport' | 'none' = linkPrefetch === 'auto' ? (isMobile() ? 'viewport' : 'hover') : linkPrefetch as 'hover' | 'render' | 'viewport' | 'none';
+  const { isActive, isPending } = useLinkState(resolved.pathname, resolved.search ?? '', exact);
+  const resolveStrategy = (): 'hover' | 'render' | 'viewport' | 'none' => {
+    if (linkPrefetch !== 'auto') return linkPrefetch as 'hover' | 'render' | 'viewport' | 'none';
+    // 'auto' resolves against the live config so a changed defaultPrefetch
+    // applies to the next hover without waiting for a Link re-render.
+    if (routerConfig.defaultPrefetch !== 'auto') return routerConfig.defaultPrefetch as 'hover' | 'render' | 'viewport' | 'none';
+    return isMobile() ? 'viewport' : 'hover';
+  };
+  const strategy: 'hover' | 'render' | 'viewport' | 'none' = resolveStrategy();
   useEffect(() => {
     if (strategy === 'render') void routerRuntime.prefetch(targetPath);
     if (strategy !== 'viewport') return;
@@ -142,7 +145,7 @@ export const Link = (props: LinkProps) => {
   };
   const onMouseEnter = (event: MouseEvent<HTMLAnchorElement>) => {
     onMouseEnterProp?.(event);
-    if (strategy !== 'hover') return;
+    if (resolveStrategy() !== 'hover') return;
     const delay = hoverPrefetchDelay ?? routerConfig.defaultHoverPrefetchDelay;
     if (!delay) return;
     if (hoverTimeout.current) window.clearTimeout(hoverTimeout.current);
@@ -150,7 +153,7 @@ export const Link = (props: LinkProps) => {
   };
   const onMouseLeave = (event: MouseEvent<HTMLAnchorElement>) => {
     onMouseLeaveProp?.(event);
-    if (strategy !== 'hover') return;
+    if (resolveStrategy() !== 'hover') return;
     if (hoverTimeout.current) { window.clearTimeout(hoverTimeout.current); hoverTimeout.current = 0; }
   };
   const normalizedClassName = typeof className === 'function' ? className({ isActive, isPending }) : className;

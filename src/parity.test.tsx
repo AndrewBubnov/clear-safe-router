@@ -237,25 +237,32 @@ describe('cache snapshot parity (original cacheSnapshot.test.ts)', () => {
   };
 
   it('exposes entries after navigation and distinguishes first load from revalidation', async () => {
+    let resolveFirst!: (value: string) => void;
     let resolveSecond!: (value: string) => void;
     let calls = 0;
     const tree = root([
       node('/test', '/test', {
         loader: () => {
           calls++;
-          if (calls === 1) return Promise.resolve('first');
+          if (calls === 1) return new Promise<string>(resolve => { resolveFirst = resolve; });
           return new Promise<string>(resolve => { resolveSecond = resolve; });
         },
       }),
     ]);
+    const entries = () => JSON.parse(screen.getByTestId('snapshot').textContent ?? '[]') as Array<Record<string, unknown>>;
     renderWithSnapshot(tree, true);
     await screen.findByText('[]');
-    await act(async () => { await routerRuntime.navigate('/test'); });
-    await waitFor(() => expect(screen.getByTestId('snapshot').textContent).toContain('"isCached":true'));
-    await act(async () => { await routerRuntime.navigate('/test'); });
-    await waitFor(() => expect(screen.getByTestId('snapshot').textContent).toContain('"isLoading":true'));
-    await act(async () => { resolveSecond('second'); await new Promise(r => setTimeout(r, 50)); });
-    await waitFor(() => expect(screen.getByTestId('snapshot').textContent).toContain('"isLoading":false'));
+    let navigation: Promise<void> = Promise.resolve();
+    act(() => { navigation = routerRuntime.navigate('/test'); });
+    await act(async () => { await Promise.resolve(); });
+    await waitFor(() => expect(entries()).toContainEqual(expect.objectContaining({ path: '/test', isCached: false, isLoading: true })));
+    await act(async () => { resolveFirst('first'); await navigation; });
+    await waitFor(() => expect(entries()).toContainEqual(expect.objectContaining({ path: '/test', data: 'first', isCached: true, isLoading: false })));
+    act(() => { navigation = routerRuntime.navigate('/test'); });
+    await act(async () => { await Promise.resolve(); });
+    await waitFor(() => expect(entries()).toContainEqual(expect.objectContaining({ path: '/test', data: 'first', isCached: true, isLoading: true })));
+    await act(async () => { resolveSecond('second'); await navigation; });
+    await waitFor(() => expect(entries()).toContainEqual(expect.objectContaining({ path: '/test', data: 'second', isCached: true, isLoading: false })));
   });
 
   it('stays empty when enableCacheSnapshot is off and syncs on demand', async () => {

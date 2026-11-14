@@ -87,10 +87,12 @@ export const runLoader = (match: RouteMatch, location: RouterLocation, signal: A
   const onFlightAbort = () => { if (flights.get(key)?.token === token) flights.delete(key); };
   flight.controller.signal.addEventListener('abort', onFlightAbort, { once: true });
   flights.set(key, flight);
+  emit();
   flight.promise = work(flight.controller.signal).finally(() => {
     signal.removeEventListener('abort', onAbort);
     flight.controller.signal.removeEventListener('abort', onFlightAbort);
     if (flights.get(key)?.token === token) flights.delete(key);
+    emit();
   });
   return flight.promise;
 };
