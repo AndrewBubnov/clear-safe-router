@@ -9,7 +9,9 @@ import { resolveComponent } from './lazy';
 export const Outlet = () => {
   const index = useContext(MatchIndex);
   const state = useRouterSnapshot();
-  return index + 1 < state.matches.length ? <RouteOutlet index={index + 1} /> : null;
+  // Outside the rendered route tree there is nothing to render below the leaf.
+  const next = index === null ? state.matches.length : index + 1;
+  return next < state.matches.length ? <RouteOutlet index={next} /> : null;
 };
 
 /** Restores saved scroll positions after this route's DOM is mounted — earlier it races React's commit. */
@@ -44,12 +46,14 @@ export const RouteOutlet = ({ index }: { index: number }) => {
     const Component = resolveComponent(route.options.component);
     return Component ? <Suspense fallback={pendingNode}><Component /></Suspense> : index < matchesLength - 1 ? <Outlet /> : null;
   }, [route, error, pending, pendingNode, defaults, index, matchesLength]);
+  const Layout = route.options.layout;
   const body = (
     <MatchIndex.Provider value={index}>
       <ScrollRestore route={route as RouteNode} />
-      {content}
+      {/* The layout renders inside the depth provider so hooks declared on it
+          (e.g. `useParams` in a shared layout) resolve to THIS route's level. */}
+      {Layout ? <Layout>{content}</Layout> : content}
     </MatchIndex.Provider>
   );
-  const Layout = route.options.layout;
-  return Layout ? <Layout>{body}</Layout> : body;
+  return body;
 };

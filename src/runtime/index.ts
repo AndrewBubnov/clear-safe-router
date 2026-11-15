@@ -26,6 +26,7 @@ import {
   useBlockerStateValue,
   useBlockedTargetValue,
   useLinkState,
+  useMatchAtDepth,
 } from "./hooks";
 
 export const routerRuntime: RouterRuntime = { navigate, invalidate, prefetch };
@@ -63,4 +64,5 @@ export {
   useLoaderStateValue,
   useBlockerStateValue,
   useBlockedTargetValue,
+  useMatchAtDepth,
 };

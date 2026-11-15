@@ -615,7 +615,7 @@ The typed form checks route existence and params exactly like `<Link to>`. Navig
 
 ### `useParams()`
 
-Returns the **leaf route's** params (untyped). For typed params, prefer the route's own hook:
+Returns the params of **the route whose component calls the hook** — inside the rendered route tree every level sees exactly its own params, never a child's. Called outside the rendered route tree (portals, standalone hooks), it falls back to the leaf match. Untyped; for typed params prefer the route's own hook:
 
 ```tsx
 const { productId } = Route.useParams(); // typed to this route
@@ -623,13 +623,13 @@ const { productId } = Route.useParams(); // typed to this route
 
 ### `useLoaderState()`
 
-Returns the leaf route's data and errors:
+Returns the calling route level's data and errors — inside the route tree the hook is depth-aware (a layout or parent page reads its own loader data even when a child URL is active); outside the tree it falls back to the leaf route:
 
 ```tsx
 const { data, loaderError, beforeLoadError } = useLoaderState();
 ```
 
-Prefer `Route.useLoaderData()` — it is typed per route and reads *that route's* data, not the leaf's.
+Prefer `Route.useLoaderData()` — it is typed per route and reads *that route's* data explicitly by route ID.
 
 ### `useLocation()`
 

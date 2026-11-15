@@ -3,7 +3,7 @@ import type { CacheSnapshot, RouteStatus as RouterStatus } from './types';
 import {
   processBlockedTarget, resetBlockedTarget, restoreScrollNow, routerRuntime, setBlockerStatus, submitRouteAction,
   updateSearchParams, useBlockedTargetValue, useBlockerStateValue, useCacheSnapshotValue, useLoaderStateValue,
-  useRouterContext, useRouterSnapshot,
+  useMatchAtDepth, useRouterContext, useRouterSnapshot,
 } from './runtime';
 
 export const useNavigate = () => routerRuntime.navigate;
@@ -15,8 +15,8 @@ export function useRouteStatus(predicate?: (status: RouterStatus) => boolean) {
   return predicate ? predicate(status) : status;
 }
 export const useParams = <T = Record<string, string>>() => {
-  const state = useRouterSnapshot();
-  return (state.matches.at(-1)?.params ?? {}) as T;
+  const match = useMatchAtDepth();
+  return (match?.params ?? {}) as T;
 };
 export const useLoaderState = <T = unknown>() => useLoaderStateValue() as { data: T; loaderError: Error | null; beforeLoadError: Error | null };
 export const useCacheSnapshot = () => useCacheSnapshotValue() as CacheSnapshot;
