@@ -211,7 +211,7 @@ import { routeTree } from './routeTree.gen';
 | `defaultPrefetch` | `'hover' \| 'render' \| 'viewport' \| 'none' \| 'auto'` | `'hover'` | Default prefetch strategy for `Link`s. `'auto'` resolves at hover-time: `hover` on desktop, `viewport` on mobile |
 | `defaultHoverPrefetchDelay` | `number` | `150` | Hover delay in ms before prefetching |
 | `defaultMinLoaderDuration` | `number` | `0` | Default minimum time the pending fallback stays visible (anti-flicker) |
-| `defaultBeforeLoad` | hook | `undefined` | Runs before every navigation (before the leaf route's own `beforeLoad`) |
+| `defaultBeforeLoad` | hook | `undefined` | Runs first in the `beforeLoad` guard chain of every navigation (before all route hooks, receiving the leaf's params) |
 | `defaultAfterLoad` | hook | `undefined` | Runs after every successful navigation (after the leaf route's own `afterLoad`) |
 | `defaultScrollRestorationBehavior` | `'auto' \| 'smooth' \| 'instant'` | `'auto'` | Default scroll restoration behavior |
 | `revalidateOnFocus` | `boolean` | `false` | Stale-only revalidation when the tab regains focus |
@@ -227,7 +227,7 @@ The single export a route file provides. `id` is the file's route ID; the type l
 | `component` | `ComponentType \| LazyComponent` | The route's element. Omitted on parent routes: an implicit `<Outlet />` renders the child automatically |
 | `layout` | `ComponentType<{ children }>` | Wraps this route's content — see [Layouts](#layouts) |
 | `loader` | `({ params, search, context, signal, attempt, location }) => unknown \| Promise<unknown>` | Loads the route's data. Runs top-down (parent first), before the route renders |
-| `beforeLoad` | `({ params, search, context, location, redirect, setContext }) => void \| Promise<void>` | Runs for the matched (leaf) route only — see [`redirect`](#redirect-redirect-in-beforeload) |
+| `beforeLoad` | `({ params, search, context, location, redirect, setContext }) => void \| Promise<void>` | Runs for **every matched route on the chain** (parent → leaf, before any loader) — see [`redirect`](#redirect-redirect-in-beforeload) |
 | `afterLoad` | `({ params, search, context, location }) => void \| Promise<void>` | Runs after a successful navigation to this route |
 | `actions` | `(args) => Record<string, (data) => unknown \| Promise<unknown>>` | Route mutations — see [Route Actions](#route-actions) |
 | `pendingFallback` | `ReactNode` | Shown while this route's loader (or first data load) is pending |
@@ -261,7 +261,7 @@ The `loader` additionally receives:
 }
 ```
 
-> **Note:** `beforeLoad` runs only for the route that matched the URL (plus the global `defaultBeforeLoad`). It is **not inherited** from parent routes — put an auth guard on the leaf route or use `defaultBeforeLoad` for app-wide checks.
+> **Note:** `beforeLoad` runs for **every matched route** on the chain, parent first, leaf last — and **before any loader runs**. A guard declared on a section route protects every URL under it, and a redirect or a thrown error at any level cancels the rest of the chain *and* all loaders below it. This makes `beforeLoad` the place for auth guards that also prevent unnecessary data fetching. `defaultBeforeLoad` (global) runs first, receiving the leaf's params.
 
 **What the generated `Route` object gives you** (typed per route ID):
 
@@ -472,6 +472,17 @@ retry: { count: 3, delay: 500 } // with 500ms between attempts
 Route-level `retry` overrides `defaultRetry` on the `<Router>`. Retry is applied to the router's cache revalidation pipeline, so it works uniformly for initial loads, revalidations, `invalidate()` and `prefetch()` — the loader is the single source of truth for route data.
 
 ## Redirects (`beforeLoad`)
+
+`beforeLoad` runs for every matched route on the chain, parent first — so a guard declared on a section route covers all URLs under it. `redirect` aborts the rest of the chain (including all loaders) and loads the target location instead (replacing the history entry):
+
+```tsx
+// src/routes/admin/route.tsx — protects every URL under /admin
+export const Route = createFileRoute('/admin')({
+  beforeLoad: ({ context, redirect }) => {
+    if (!context.isAuthorized) return redirect('/login');
+  },
+});
+```
 
 ```tsx
 export const Route = createFileRoute('/dashboard')({

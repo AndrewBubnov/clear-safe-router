@@ -117,6 +117,62 @@ export const loadLocation = async (
   dataStore.setState(new Map(data));
   emit();
   try {
+    // Phase 1 — beforeLoad guards, run for the whole matched chain (parent → leaf)
+    // BEFORE any loader. The global hook runs first (with the leaf's params, as before);
+    // a redirect or a thrown error at any level prevents the loader phase entirely.
+    if (matches.length > 0) {
+      const leaf = matches.at(-1)!;
+      const hooks: { hook: BeforeLoadHook; match: RouteMatch }[] = [];
+      if (routerConfig.defaultBeforeLoad) hooks.push({ hook: routerConfig.defaultBeforeLoad, match: leaf });
+      for (const match of matches)
+        if (match.route.options.beforeLoad) hooks.push({ hook: match.route.options.beforeLoad, match });
+      let guardFailed = false;
+      for (const { hook, match } of hooks) {
+        if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
+        let redirected: RouterLocation | undefined;
+        try {
+          await hook({
+            params: match.params,
+            search: Object.fromEntries(new URLSearchParams(location.search)),
+            context: contextStore.getState(),
+            location,
+            setContext: (update) => {
+              contextStore.setState(
+                typeof update === "function"
+                  ? (
+                      update as (
+                        previous: Record<string, unknown>,
+                      ) => Record<string, unknown>
+                    )(contextStore.getState())
+                  : update,
+              );
+            },
+            redirect: async (to) => {
+              redirected =
+                typeof to === "string"
+                  ? splitLocation(to)
+                  : {
+                      pathname: to.pathname,
+                      search: formatSearch(to.search),
+                      state: to.state,
+                    };
+            },
+          });
+        } catch (error) {
+          beforeLoadErrors.set(match.route.id, toError(error));
+          errors.set(match.route.id, toError(error));
+          guardFailed = true;
+          break;
+        }
+        if (redirected) {
+          if (seq !== navigationSeqRef.current || controller.signal.aborted)
+            return;
+          await loadLocation(redirected, { replace: true });
+          return;
+        }
+      }
+      // Phase 2 — loaders, only when every guard on the chain passed.
+      if (!guardFailed) {
     const revalidated: RouteMatch[] = [];
     for (const match of matches) {
       if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
@@ -150,60 +206,8 @@ export const loadLocation = async (
         break;
       }
     }
-    if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
-    // beforeLoad runs for the matched route (plus the global one), not inherited.
-    const leaf = matches.at(-1);
-    if (leaf) {
-      const hooks: BeforeLoadHook[] = [];
-      if (routerConfig.defaultBeforeLoad)
-        hooks.push(routerConfig.defaultBeforeLoad);
-      if (leaf.route.options.beforeLoad)
-        hooks.push(leaf.route.options.beforeLoad);
-      for (const hook of hooks) {
-        if (seq !== navigationSeqRef.current || controller.signal.aborted)
-          return;
-        let redirected: RouterLocation | undefined;
-        try {
-          await hook({
-            params: leaf.params,
-            search: Object.fromEntries(new URLSearchParams(location.search)),
-            context: contextStore.getState(),
-            location,
-            setContext: (update) => {
-              contextStore.setState(
-                typeof update === "function"
-                  ? (
-                      update as (
-                        previous: Record<string, unknown>,
-                      ) => Record<string, unknown>
-                    )(contextStore.getState())
-                  : update,
-              );
-            },
-            redirect: async (to) => {
-              redirected =
-                typeof to === "string"
-                  ? splitLocation(to)
-                  : {
-                      pathname: to.pathname,
-                      search: formatSearch(to.search),
-                      state: to.state,
-                    };
-            },
-          });
-        } catch (error) {
-          beforeLoadErrors.set(leaf.route.id, toError(error));
-          errors.set(leaf.route.id, toError(error));
-          break;
-        }
-        if (redirected) {
-          if (seq !== navigationSeqRef.current || controller.signal.aborted)
-            return;
-          await loadLocation(redirected, { replace: true });
-          return;
-        }
-      }
-    }
+    } // end of the loader phase (skipped entirely when a beforeLoad guard failed)
+    } // end of the guard chain block
     if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
     const status = errors.size ? "error" : "active";
     setSnapshot({ location, status, matches, data, errors });
@@ -221,16 +225,17 @@ export const loadLocation = async (
         options.replace,
         false,
       );
-    if (leaf) {
+    const afterLoadLeaf = matches.at(-1);
+    if (afterLoadLeaf) {
       const hooks: AfterLoadHook[] = [];
-      if (leaf.route.options.afterLoad)
-        hooks.push(leaf.route.options.afterLoad);
+      if (afterLoadLeaf.route.options.afterLoad)
+        hooks.push(afterLoadLeaf.route.options.afterLoad);
       if (routerConfig.defaultAfterLoad)
         hooks.push(routerConfig.defaultAfterLoad);
       for (const hook of hooks) {
         try {
           await hook({
-            params: leaf.params,
+            params: afterLoadLeaf.params,
             search: Object.fromEntries(new URLSearchParams(location.search)),
             context: contextStore.getState(),
             location,
