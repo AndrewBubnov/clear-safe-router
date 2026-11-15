@@ -224,7 +224,7 @@ The single export a route file provides. `id` is the file's route ID; the type l
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `component` | `ComponentType \| LazyComponent` | The route's element. Omitted on parent routes: an implicit `<Outlet />` renders the child automatically |
+| `component` | `ComponentType \| LazyComponent` | The route's element. Plain functions, `React.memo`/`forwardRef` wrappers, `React.lazy` and the router's `lazy()` all work. Omitted on parent routes: an implicit `<Outlet />` renders the child automatically |
 | `layout` | `ComponentType<{ children }>` | Wraps this route's content — see [Layouts](#layouts) |
 | `loader` | `({ params, search, context, signal, attempt, location }) => unknown \| Promise<unknown>` | Loads the route's data. Runs top-down (parent first), before the route renders |
 | `beforeLoad` | `({ params, search, context, location, redirect, setContext }) => void \| Promise<void>` | Runs for **every matched route on the chain** (parent → leaf, before any loader) — see [`redirect`](#redirect-redirect-in-beforeload) |
@@ -389,7 +389,7 @@ Active matching: `'/'` matches only exactly `'/'`; any other target is active on
 | `'viewport'` | Prefetches when the link enters the viewport (IntersectionObserver, 250ms dwell) |
 | `'none'` | No prefetching |
 
-> A prefetched entry stays fresh for 30 seconds: the first navigation within that window reuses it without running the loader. After that, the route's normal `staleTime` applies. Prefetch never shortens a longer route `staleTime`. Prefetches are queued with bounded concurrency (4 parallel, 2 on mobile) and also preload the target route's lazy chunk.
+> A prefetched entry stays fresh for 30 seconds: the first navigation within that window reuses it without running the loader. After that, the route's normal `staleTime` applies. Prefetch never shortens a longer route `staleTime`. Prefetches are queued with bounded concurrency (4 parallel, 2 on mobile) and also preload the target route's lazy chunk. Prefetching runs the target's `beforeLoad` guard chain first — if a guard would redirect or fail, nothing is prefetched, so protected data never lands in the cache.
 
 #### Styling link states with CSS
 
@@ -597,7 +597,7 @@ export const Route = createFileRoute('/feed')({
 });
 ```
 
-Positions are captured on navigation away and restored when you come back. For content that arrives *after* the automatic restore (deferred data, late chunks, `useEffect` fetches), restore manually:
+Positions are captured on navigation away and restored when you come back. The option is read from the deepest matched route that declares it, so setting `scrollRestoration` on a layout or parent covers all of its children. Restoration also re-fires when the same route renders with different params (`/item/1` → `/item/2`), not just on route mount. For content that arrives *after* the automatic restore (deferred data, late chunks, `useEffect` fetches), restore manually:
 
 ```tsx
 const restoreScroll = useRestoreScroll();
@@ -747,7 +747,7 @@ useEffect(() => {
 | `process()` | Confirm and complete the blocked navigation |
 | `reset()` | Cancel and stay |
 
-The callback receives `{ location, nextLocation, context }`. When a Back/Forward press is blocked, the URL change is reverted until `process()`/`reset()` is called.
+The callback receives `{ location, nextLocation, context }`. It is evaluated after every commit (never during render), so closure state like form dirtiness stays reactive. When a Back/Forward press is blocked, the URL change is reverted until `process()`/`reset()` is called. If the component using `useBlocker` unmounts while charged, the blocker releases automatically — navigation is never stuck.
 
 ### `useRestoreScroll()`
 

@@ -45,7 +45,7 @@ import {
   parseCacheKey,
   splitUrl,
 } from "./match";
-import { loadLocation, stopPolling } from "./navigate";
+import { loadLocation, stopPolling, guardsAllowPrefetch } from "./navigate";
 import { captureScroll } from "./scroll";
 import { routerConfig } from "./config";
 
@@ -194,6 +194,9 @@ const runPrefetch = async (
     typeof target === "string" ? splitLocation(target) : resolveTarget(target);
   if (isSameLocation(location, snapshot().location)) return;
   const matches = matchRoutes(location.pathname, location, routesRef.current);
+  // Guards run before prefetch loaders: a protected route is never prefetched,
+  // so its data cannot end up cached without authorization.
+  if (!(await guardsAllowPrefetch(matches, location))) return;
   for (const match of matches)
     await runLoader(
       match,

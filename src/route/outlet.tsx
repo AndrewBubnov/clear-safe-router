@@ -13,12 +13,13 @@ export const Outlet = () => {
   const next = index === null ? state.matches.length : index + 1;
   return next < state.matches.length ? <RouteOutlet index={next} /> : null;
 };
-
-/** Restores saved scroll positions after this route's DOM is mounted — earlier it races React's commit. */
-const ScrollRestore = ({ route }: { route: { options: { scrollRestoration?: boolean | string[] } } }) => {
+/** Restores saved scroll positions after this route's DOM is mounted — earlier it races React's commit.
+ * The effect also re-runs when the route's own cache key changes (same route object, different
+ * params, e.g. /item/1 → /item/2), otherwise the restore would fire only once per mount. */
+const ScrollRestore = ({ route, restoreKey }: { route: { options: { scrollRestoration?: boolean | string[] } }; restoreKey: string }) => {
   useEffect(() => {
     if (route.options.scrollRestoration) restoreScrollNow();
-  }, [route]);
+  }, [route, restoreKey]);
   return null;
 };
 
@@ -49,7 +50,7 @@ export const RouteOutlet = ({ index }: { index: number }) => {
   const Layout = route.options.layout;
   const body = (
     <MatchIndex.Provider value={index}>
-      <ScrollRestore route={route as RouteNode} />
+      <ScrollRestore route={route as RouteNode} restoreKey={dataKey} />
       {/* The layout renders inside the depth provider so hooks declared on it
           (e.g. `useParams` in a shared layout) resolve to THIS route's level. */}
       {Layout ? <Layout>{content}</Layout> : content}

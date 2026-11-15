@@ -12,6 +12,7 @@ import {
   prefetch,
 } from "./actions";
 import { restoreScrollNow } from "./scroll";
+import { stopPolling } from "./navigate";
 import { blockedTargetStore, blockerStateStore } from "./state";
 import { emit as emitSnapshot, syncCacheSnapshot } from "./cache";
 import { resolveTarget } from "./match";
@@ -48,6 +49,7 @@ export {
   submitRouteAction,
   updateSearchParams,
   restoreScrollNow,
+  stopPolling,
   resolveTarget,
   syncCacheSnapshot,
   navigate,

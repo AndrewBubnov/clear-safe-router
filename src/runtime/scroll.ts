@@ -4,9 +4,19 @@ import { scrollMap, snapshot } from './state';
 import { routerConfig } from './config';
 import type { RouteMatch, RouterLocation } from '../types';
 
+/** The scroll option of a navigation: the deepest matched route that declares
+ * `scrollRestoration` wins, so the option works on a layout/parent as well. */
+const scrollOptionFor = (matches: RouteMatch[]) => {
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const route = matches[i]!.route;
+    if (route.options.scrollRestoration) return route;
+  }
+  return undefined;
+};
+
 export const captureScroll = (location: RouterLocation) => {
-  const leaf = snapshot().matches.at(-1);
-  const option = leaf?.route.options.scrollRestoration;
+  const route = scrollOptionFor(snapshot().matches);
+  const option = route?.options.scrollRestoration;
   if (!option) return;
   const entries: [string, number][] = [];
   if (Array.isArray(option)) {
@@ -24,11 +34,11 @@ export const captureScroll = (location: RouterLocation) => {
   if (entries.length) scrollMap.set(`${location.pathname}${location.search}`, entries);
 };
 export const applyScrollRestoration = (matches: RouteMatch[], location: RouterLocation) => {
-  const leaf = matches.at(-1);
-  const option = leaf?.route.options.scrollRestoration;
+  const route = scrollOptionFor(matches);
+  const option = route?.options.scrollRestoration;
   if (!option) return;
   const saved = scrollMap.get(`${location.pathname}${location.search}`);
-  const behavior = leaf?.route.options.scrollRestorationBehavior ?? routerConfig.defaultScrollRestorationBehavior;
+  const behavior = route?.options.scrollRestorationBehavior ?? routerConfig.defaultScrollRestorationBehavior;
   if (saved) {
     const windowArgs: ScrollToOptions = { behavior };
     for (const [key, position] of saved) {

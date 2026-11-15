@@ -267,6 +267,9 @@ export const loadLocation = async (
     if (fallback) errors.set(fallback.route.id, toError(error));
     setSnapshot({ location: nextLocation, status: "error", matches, data, errors });
     dataStore.setState(new Map(data));
+    // Re-evaluate polling even on a failed load: the old timer for the previous
+    // location must not keep polling in the background.
+    schedulePolling(matches, location);
     if (options.fromPop) {
       history.replaceState(
         location.state ?? null,
@@ -282,6 +285,43 @@ export const loadLocation = async (
       );
   }
 };
+/** Runs the beforeLoad guard chain (parent → leaf) for prefetch purposes only:
+ * no snapshot/UI effects. Returns false when a guard redirected or threw —
+ * prefetch must not cache data that a real navigation would have rejected.
+ * Keep the hook-argument shape in sync with the guard phase of `loadLocation`. */
+export const guardsAllowPrefetch = async (matches: RouteMatch[], location: RouterLocation) => {
+  if (matches.length === 0) return true;
+  const leaf = matches.at(-1)!;
+  const hooks: { hook: BeforeLoadHook; params: Record<string, string> }[] = [];
+  if (routerConfig.defaultBeforeLoad) hooks.push({ hook: routerConfig.defaultBeforeLoad, params: leaf.params });
+  for (const match of matches)
+    if (match.route.options.beforeLoad) hooks.push({ hook: match.route.options.beforeLoad, params: match.params });
+  for (const { hook, params } of hooks) {
+    let redirected = false;
+    try {
+      await hook({
+        params,
+        search: Object.fromEntries(new URLSearchParams(location.search)),
+        context: contextStore.getState(),
+        location,
+        setContext: (update) => {
+          contextStore.setState(
+            typeof update === "function"
+              ? (update as (previous: Record<string, unknown>) => Record<string, unknown>)(contextStore.getState())
+              : update,
+          );
+        },
+        redirect: async () => {
+          redirected = true;
+        },
+      });
+    } catch {
+      return false;
+    }
+    if (redirected) return false;
+  }
+  return true;
+};
 export const schedulePolling = (
   matches: RouteMatch[],
   location: RouterLocation,
@@ -292,6 +332,13 @@ export const schedulePolling = (
     .find((match) => match.route.options.pollingInterval);
   if (!target) return;
   pollTimer = setInterval(() => {
+    // Check freshness BEFORE spending the request: once the user navigated away,
+    // the old location must not keep polling.
+    const current = snapshotGetter().location;
+    if (
+      `${current.pathname}${current.search}` !== `${location.pathname}${location.search}`
+    )
+      return;
     void runLoader(
       target,
       location,

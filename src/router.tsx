@@ -8,6 +8,7 @@ import {
   setRouterConfig,
   setupRevalidation,
   syncCacheSnapshot,
+  stopPolling,
   useRouterSnapshot,
 } from "./runtime";
 import type { RouterProps } from "./types";
@@ -67,6 +68,7 @@ export const Router = ({
     return () => {
       window.removeEventListener("popstate", onPopState);
       stopRevalidation();
+      stopPolling();
     };
   }, [routes, maxCacheSize]);
   if (state.matches.length === 0) {

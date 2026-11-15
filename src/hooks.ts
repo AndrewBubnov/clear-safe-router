@@ -1,4 +1,4 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
 import {
   routerRuntime,
   processBlockedTarget,
@@ -16,6 +16,7 @@ import {
   useRouterSnapshot,
 } from "./runtime";
 import type { CacheSnapshot, RouteStatus as RouterStatus } from "./types";
+import { blockerStateStore } from "./runtime/state";
 
 export const useNavigate = () => routerRuntime.navigate;
 export const useLocation = () => useRouterSnapshot().location;
@@ -60,6 +61,9 @@ export const useSearchParams = () => {
   };
 };
 export const useRestoreScroll = () => restoreScrollNow;
+let blockerOwnerSeq = 0;
+let blockerOwner = -1;
+
 export const useBlocker = (
   blockerFn: (args: {
     location: ReturnType<typeof useLocation>;
@@ -71,11 +75,38 @@ export const useBlocker = (
   const nextLocation = useBlockedTargetValue();
   const location = useLocation();
   const { context } = useRouterContext();
-  const shouldBlock = blockerFn({ location, nextLocation, context });
-  useEffect(
-    () => setBlockerStatus(shouldBlock ? "charged" : "unblocked"),
-    [shouldBlock],
-  );
+  // The blocker function runs in an effect (never during render) and the global
+  // charged state is owned by the most recently mounted hook: when that hook
+  // unmounts while charged, it releases the blocker so navigation is not stuck.
+  const fnRef = useRef(blockerFn);
+  fnRef.current = blockerFn;
+  const armedRef = useRef<boolean | null>(null);
+  const unmountedRef = useRef(false);
+  // Declared before the decision effect so its layout cleanup runs first on unmount.
+  useLayoutEffect(() => () => { unmountedRef.current = true; }, []);
+  // Runs after every commit so arbitrary closure state (form dirtiness, context…)
+  // stays reactive, but never inside render. The global charged state is owned by
+  // the most recently mounted hook; when that hook unmounts while charged, it
+  // releases the blocker so navigation is not stuck.
+  useLayoutEffect(() => {
+    const ownerId = ++blockerOwnerSeq;
+    blockerOwner = ownerId;
+    const shouldBlock = !!fnRef.current({ location, nextLocation, context });
+    if (armedRef.current !== shouldBlock) {
+      armedRef.current = shouldBlock;
+      // A re-run triggered by the block itself (nextLocation set) must not
+      // overwrite the 'blocked' status.
+      if (blockerStateStore.getState() !== "blocked")
+        setBlockerStatus(shouldBlock ? "charged" : "unblocked");
+    }
+    return () => {
+      if (blockerOwner !== ownerId) return;
+      blockerOwner = -1;
+      if (!unmountedRef.current) return;
+      armedRef.current = null;
+      if (blockerStateStore.getState() === "charged") setBlockerStatus("unblocked");
+    };
+  });
   const process = async () => {
     if (!nextLocation) return;
     setBlockerStatus("unblocked");
