@@ -1,10 +1,10 @@
 import { MantineProvider } from '@mantine/core';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
-import { Router, routerRuntime } from '../src/index';
-import { routeTree } from './routeTree.gen';
-import { resetRouterState, setRouterConfig } from '../src/runtime';
-import { getCallCount } from './pages/api';
+import { Router, routerRuntime } from '../../src/index';
+import { routeTree } from '../../playground/routeTree.gen';
+import { resetRouterState, setRouterConfig } from '../../src/runtime';
+import { getCallCount } from '../../playground/pages/api';
 
 vi.hoisted(() => {
 	window.matchMedia ??= ((query: string) => ({

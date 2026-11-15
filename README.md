@@ -1,316 +1,740 @@
-# Typed Router
+# Clear Safe Router
 
-[![CI](https://github.com/AndrewBubnov/clear-safe-router/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/AndrewBubnov/clear-safe-router/actions/workflows/ci.yml)
+A provider-free React SPA router with **file-based routing** and **compile-time type-safe navigation** — nested routes, typed `Link` and hooks, loaders with caching, actions, blockers, prefetching, and scroll restoration, all wired up by a small Vite plugin.
 
-A lightweight, provider-free React SPA router with **file-based routing** and **compile-time type-safe navigation**.
+Built on the core runtime from [clear-react-router](https://github.com/AndrewBubnov/clear-react-router). Clear Safe Router adds the file-based route generation and the compile-time type layer on top of it.
 
-Built on the core runtime from [clear-react-router](https://github.com/AndrewBubnov/clear-react-router) — nested routes, loaders with caching, actions, blockers, prefetch, scroll restoration — plus a Vite plugin that generates the route tree and TypeScript types from your file structure.
+## Why Clear Safe Router?
+
+Most React routers ask you to choose: central route config *or* file-based routes, runtime checks *or* type safety. Clear Safe Router does both halves at once:
+
+- **File-based routing** — a route is a file under your app's routes directory. The Vite plugin generates the route tree and the type registry from your file structure.
+- **Compile-time type safety** — `<Link to="...">`, `useNavigate`, `Route.useParams()`, and `Route.useLoaderData()` know every route of your app: unknown route IDs and missing or misnamed params are compile errors, not runtime surprises.
+- **Provider-free** — one `<Router />` in the tree, one global store. Every hook and `Link` works anywhere, including components rendered outside the router.
+- **Small, explicit API** — loaders, caching, invalidation, blockers, prefetch, actions. No RouteProvider nesting, no plugin context, no magic.
+
+> TL;DR? Clone the repo and run `npm run dev` — the built-in playground exercises every feature (nested routes, loaders with caching and a live cache visualizer, actions, blockers, prefetch, optimistic navigation, scroll restoration, retry, polling, search params, a context-based auth guard) against a fake in-browser server. Open devtools and click around.
 
 ## Features
 
-- **File-based routing** — Routes defined by files in your app (default `src/routes/`, configurable via the Vite plugin)
-- **Compile-time type safety** — Typed `Link`, `navigate`, `useParams` with route existence and param checking
-- **Single router** — One global router owns browser URL/history
-- **Provider-free** — No context providers needed, all state in stores
-- **Loaders with caching** — TTL-based (`staleTime`), LRU eviction (`maxCacheSize`), garbage collection (`gcTime`)
-- **Route actions** — Mutations with automatic invalidation
-- **Navigation blocking** — Prevent accidental navigation
-- **Prefetching** — Hover, viewport, render strategies
-- **Optimistic navigation** — Instant render with stale data
-- **Scroll restoration** — Window and named containers
-- **Lazy routes** — Code-splitting with `lazy()`
-- **Retry** — Automatic revalidation retry
-- **Polling** — Automatic revalidation interval
-- **Deferred data** — React 19 `use()` support
+- **File-based routing** — routes defined by files, generated into a typed route tree
+- **Compile-time type safety** — typed `Link`, `navigate`, `useParams`, `useLoaderData` with route-existence and param checking
+- **Nested routes & layouts** — layouts stack outermost-first and stay mounted across child navigation
+- **Data loading** — built-in loaders with TTL-based caching (`staleTime`), LRU eviction (`maxCacheSize`), garbage collection (`gcTime`)
+- **Route actions** — mutations with automatic invalidation
+- **Navigation blocking** — prevent accidental navigation (including browser Back/Forward) with `useBlocker`
+- **Programmatic redirects** — redirect from a `beforeLoad` hook
+- **Cache invalidation** — manual revalidation of the current route, concrete paths, or dynamic patterns
+- **Prefetching** — hover / render / viewport strategies with a bounded, queued prefetch pipeline
+- **Optimistic navigation** — instantly render stale cached data while fresh data loads in the background
+- **Retry** — automatic loader retry, applied to every cache revalidation path
+- **Polling** — revalidate a route's data on an interval while it is active
+- **Lazy routes** — code-splitting with `lazy()`
+- **Deferred data** — React 19 `use()` support: navigate on fast data, stream the slow parts
+- **Scroll restoration** — window and named containers, with manual restore for late content
+- **Cache inspection** — opt-in live snapshot of cached loader entries for devtools
+- **View transitions** — optional page animations via the native View Transitions API
+- **Browser history** — full back/forward support, blockers included
 
-## File Conventions
-
-```
-routes/
-  __root.tsx              # Required root route (id __root__)
-  index.tsx               # "/"
-  about.tsx               # "/about"
-  products/
-    route.tsx             # "/products" — the folder's segment; parent for the folder's children
-    index.tsx             # "/products/" (distinct id from /products)
-    $productId.tsx        # "/products/:productId"
-    $productId/           # nests under $productId.tsx (sibling file is the parent)
-      reviews.tsx         # "/products/:productId/reviews"
-  $.tsx                   # Catch-all "/*" (must be terminal), params { _splat }
-```
-
-### Naming Rules
-
-| Pattern | Example | Matches | Params |
-|---------|---------|---------|--------|
-| Static | `about.tsx` | `/about` | — |
-| Index | `index.tsx` | `/` (or parent `/products/`) | — |
-| Dynamic | `$productId.tsx` | `/products/123` | `{ productId: "123" }` |
-| Catch-all | `$.tsx` | `/*` | `{ _splat: "path/to/match" }` |
-| Folder parent | `products/route.tsx` | `/products` | folder's own segment |
-| Nested folder | `$productId/reviews.tsx` next to `$productId.tsx` | `/products/:productId/reviews` | merged params |
-
-Folders with children require a `route.tsx` parent — unless a sibling route file with the same segment name exists (`$productId.tsx` next to `$productId/`), which then acts as the parent. `index.tsx` shares the parent's URL but has a distinct route ID (`/products/` vs `/products`).
-
-### Route Module Exports
-
-```tsx
-// routes/products/$productId.tsx
-import { createFileRoute } from 'typed-router';
-
-export const Route = createFileRoute('/products/$productId')({
-  component: lazy(() => import('./ProductDetail')),
-  loader: async ({ params, signal }) => fetchProduct(params.productId, { signal }),
-  staleTime: 60_000,
-  beforeLoad: async ({ params, redirect }) => {
-    if (!params.productId) return redirect('/products');
-  },
-  actions: ({ params }) => ({
-    update: async (data) => api.updateProduct(params.productId, data),
-  }),
-});
-```
-
-The `createFileRoute` helper:
-- **Binds the file to a route ID** — Generator validates it matches the file path
-- **Provides typed params** — `params` is `{ productId: string }` in loader, beforeLoad, actions
-- **Enables typed navigation** — `Link` and `navigate` know this route exists
-
-## Quick Start
+## Getting Started
 
 ```bash
-npm install typed-router
+npm install clear-safe-router
 ```
 
-```tsx
+### 1. Add the Vite plugin
+
+```ts
 // vite.config.ts
-import { typedRouter } from 'typed-router/vite';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { typedRouter } from 'clear-safe-router/vite';
 
 export default defineConfig({
-  plugins: [react(), typedRouter()],
+  plugins: [
+    react(),
+    typedRouter(), // scans src/routes, generates src/routeTree.gen.ts
+  ],
 });
 ```
 
-```tsx
-// src/main.tsx
-import { Router } from 'typed-router';
-import { routeTree } from './routeTree.gen'; // Generated — do not edit
+The plugin generates the route tree on dev-server start and on every build, watches the routes directory, and full-reloads the page when routes are added or removed. Options:
 
-createRoot(...).render(<Router routes={routeTree} />);
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `routesDirectory` | `string` | `'src/routes'` | Directory scanned for route files |
+| `generatedFile` | `string` | `'src/routeTree.gen.ts'` | Where the generated route tree is written |
+
+### 2. Create the root route
+
+```tsx
+// src/routes/__root.tsx
+import { createFileRoute, Outlet } from 'clear-safe-router';
+
+export const Route = createFileRoute('__root__')({
+  component: () => <Outlet />,
+});
 ```
 
-```tsx
-// routes/index.tsx
-import { createFileRoute } from 'typed-router';
+### 3. Create your first routes
 
-// The generator validates this exact export and ID against the file path
+```tsx
+// src/routes/index.tsx  →  "/"
+import { createFileRoute } from 'clear-safe-router';
+
 export const Route = createFileRoute('/')({
   component: () => <h1>Home</h1>,
 });
 ```
 
-## Typed Navigation
-
-Type checking is always on: `Link` and `navigate` validate route existence, required parameter names, and reject extra parameters — against the generated `RouteId` union. Raw URLs are an explicit escape hatch, not a fallback level.
-
 ```tsx
-import { Link, useNavigate } from 'typed-router';
+// src/routes/about.tsx  →  "/about"
+import { createFileRoute } from 'clear-safe-router';
 
-// Typed (route IDs are generated from your files)
-<Link to="/products/$productId" params={{ productId: '123' }} />   // ✅
-<Link to="/products/$productId" params={{ id: '123' }} />          // ❌ wrong param name
-<Link to="/products/$productId" />                                 // ❌ missing params
-<Link to="/unknown" />                                             // ❌ route doesn't exist
-<Link to="/products" params={{ x: 1 }} />                          // ❌ static route takes no params
-
-// Imperative navigation — same checking
-const navigate = useNavigate();
-navigate({ to: '/products/$productId', params: { productId: '123' } });
-
-// Escape hatch: raw URL, intentionally unchecked
-<Link toRaw="/runtime-generated/path" />
-navigate('/runtime/path?x=1');
-
-// Typed params inside the route's own file
-const { productId } = Route.useParams(); // typed from the route ID
-const data = Route.useLoaderData();      // typed from the loader's return type
-```
-
-## Commands
-
-```bash
-# Generate route tree and types (run before TypeScript check)
-npx typed-router generate
-
-# Dev server — regenerates the route tree, then opens the browser on the playground
-npm run dev
-
-# Build
-npm run build
-
-# Tests
-npm test
-```
-
-## Project Structure
-
-```
-typed-router/
-├── src/
-│   ├── index.ts                 # Public API exports
-│   ├── runtime/                 # Framework-free core (ported from clear-react-router)
-│   │   ├── create.ts           # Pub/sub store
-│   │   ├── types.ts            # Core types
-│   │   ├── constants.ts
-│   │   ├── navigate.ts         # Navigation logic
-│   │   ├── revalidateCache.ts  # Cache & loader revalidation
-│   │   ├── invalidate.ts       # Invalidation API
-│   │   ├── prefetch.ts         # Prefetch logic
-│   │   └── syncCacheSnapshot.ts
-│   ├── creators/
-│   │   └── createRouter.ts     # Route normalization (ported)
-│   ├── components/
-│   │   ├── Router.tsx          # Main Router component
-│   │   └── Link.tsx            # Link component
-│   ├── hooks/                  # React hooks (ported)
-│   │   ├── useNavigate.ts
-│   │   ├── useParams.ts
-│   │   ├── useLocation.ts
-│   │   ├── useLoaderState.ts
-│   │   ├── useInvalidate.ts
-│   │   ├── useBlocker.ts
-│   │   ├── useAction.ts
-│   │   ├── useRouteStatus.ts
-│   │   ├── useRouterContext.ts
-│   │   ├── useSearchParams.ts
-│   │   ├── useSubmitAction.ts
-│   │   ├── useRestoreScroll.ts
-│   │   └── useCacheSnapshot.ts
-│   ├── utils/                  # Utilities (ported)
-│   │   ├── create.ts
-│   │   ├── lazy.ts
-│   │   ├── createLazyComponent.tsx
-│   │   ├── findRoute.ts
-│   │   ├── utils.ts
-│   │   ├── commitState.ts
-│   │   ├── commitNavigation.ts
-│   │   ├── isCacheItemFresh.ts
-│   │   └── renderElement.tsx
-│   ├── config/
-│   │   └── routerConfig.ts     # Global config singleton
-│   ├── instance.ts             # Router singleton
-│   └── vite-plugin/
-│       ├── index.ts            # Vite plugin entry
-│       ├── scanner.ts          # File system scanner
-│       ├── generator.ts        # Route tree & types generator
-│       └── types.ts            # Generator types
-├── playground/                 # Demo app for E2E testing
-└── package.json
-```
-
-## API Reference
-
-### `createFileRoute<Path>(path)(config)`
-
-Creates a typed route configuration. The `path` literal must match the file's generated route ID.
-
-```ts
-createFileRoute('/products/$productId')({
-  component: ProductDetail,
-  loader: async ({ params }) => ({ product: await fetchProduct(params.productId) }),
-  staleTime: 60_000,
-  beforeLoad: async ({ params, redirect }) => { ... },
-  afterLoad: async ({ params }) => { ... },
-  actions: ({ params }) => ({ update: async (data) => ... }),
-  layout: ProductLayout,
-  errorElement: ProductError,
-  fallback: ProductSkeleton,
-  loaderFallback: ProductLoader,
-  retry: 3,
-  gcTime: 300_000,
-  optimistic: true,
-  pollingInterval: 30_000,
-  scrollRestoration: true,
-  scrollRestorationBehavior: 'smooth',
-  minLoaderDuration: 200,
+export const Route = createFileRoute('/about')({
+  component: () => <h1>About</h1>,
 });
 ```
 
-### `Router` Props
+### 4. Mount the router
 
 ```tsx
-<Router
-  routes={routes}                    // Required: generated route tree
-  maxCacheSize={150}                 // LRU cache limit (device-aware default)
-  isAnimated={false}                 // View Transitions API
-  animationDuration={300}
-  defaultStaleTime={0}
-  defaultLoaderFallback={<Spinner />}
-  defaultErrorElement={<Error />}
-  defaultPrefetch="hover"            // 'hover' | 'render' | 'viewport' | 'none'
-  defaultHoverPrefetchDelay={150}
-  defaultMinLoaderDuration={0}
-  defaultRetry={3}
-  defaultBeforeLoad={async ({ redirect }) => ...}
-  defaultAfterLoad={async ({ params }) => ...}
-  defaultScrollRestorationBehavior="auto"
-  revalidateOnFocus={false}
-  revalidateOnReconnect={false}
-  context={{ user: null }}
-  enableCacheSnapshot={false}
-  errorBoundary={ErrorBoundary}
-/>
+// src/main.tsx
+import { createRoot } from 'react-dom/client';
+import { Router } from 'clear-safe-router';
+import { routeTree } from './routeTree.gen';
+
+createRoot(document.getElementById('root')!).render(
+  <Router routes={routeTree} />
+);
 ```
 
-### Hooks
+That's it. `<Link to="/about">` is now a fully typed navigation — try changing it to a route that doesn't exist.
 
-All hooks work **outside `<Router>`** — state lives in global stores.
+## File Conventions
 
-| Hook | Returns |
-|------|---------|
-| `useNavigate()` | `(arg: string \| Location \| NavigatePathArg \| -1) => Promise<void>` |
-| `useParams<TPath>()` | `ParamsFor<TPath>` or `Record<string, string>` |
-| `useLocation()` | `{ pathname, search, state, prevLocation }` |
-| `useLoaderState<T>()` | `{ data: T, loaderError, beforeLoadError }` |
-| `useInvalidate()` | `(path?, options?) => Promise<InvalidateResult[]>` |
-| `useBlocker(callback)` | `{ state, process(), reset() }` |
-| `useAction(name, options?)` | `(input) => Promise<{ data, error }>` |
-| `useRouteStatus(predicate?)` | `Status` or `boolean` |
-| `useRouterContext()` | `{ context, setContext }` |
-| `useSearchParams()` | `{ searchParams, getSearchParams, setSearchParams }` |
-| `useSubmitAction(name, options?)` | `{ submit, onSubmit, data, error, isSubmitting }` |
-| `useRestoreScroll(behavior?)` | `() => void` |
-| `useCacheSnapshot()` | `CacheSnapshotEntry[]` |
+```
+src/routes/
+  __root.tsx              # Required root route (id "__root__")
+  index.tsx               # "/"
+  about.tsx               # "/about"
+  products/
+    route.tsx             # "/products" — the folder's segment; parent for the folder's children
+    index.tsx             # "/products/" (distinct id from "/products")
+    $productId.tsx        # "/products/:productId"
+    $productId/           # nests under the sibling $productId.tsx (it acts as the parent)
+      reviews.tsx         # "/products/:productId/reviews"
+  $.tsx                   # Catch-all "/*" (must be terminal), params { _splat }
+```
 
-### `Link` Props
+| File | Route ID | Notes |
+|------|----------|-------|
+| `__root.tsx` | `__root__` | Required. Typically renders `<Outlet />` |
+| `index.tsx` | `/products/` | Shares the parent's URL but gets a **distinct ID** (trailing slash) — its own component, loader and cache entry |
+| `route.tsx` | `/products` | The folder's own route. Required when a folder has child routes and no sibling file with the same segment name |
+| `$name.tsx` | `/products/$name` | Dynamic segment; `$name` becomes a URL param |
+| `$name/` (folder) | — | Children nest under the sibling `$name.tsx` route file |
+| `$.tsx` | `/$` | Catch-all, matches any depth, `_splat` param. Must be terminal — nothing can nest below it |
+
+Rules the generator enforces (with file-accurate errors in dev):
+
+- Every route file must export `const Route = createFileRoute('<its id>')(...)`.
+- Route IDs are unique; two files cannot produce the same ID.
+- Static and dynamic paths may coexist (`/products/new` and `/products/$productId`); two dynamic segments at the same level must differ in name.
+- Dynamic parameter names must be unique within one route.
+
+## The Generated File
+
+`routeTree.gen.ts` (do not edit) contains two things:
+
+```ts
+// 1. The runtime tree the <Router> consumes
+export const routeTree = { /* nested RouteNode tree with resolved paths */ };
+
+// 2. A module augmentation registering your route IDs with the library
+declare module 'clear-safe-router' {
+  export interface TypedRouterRouteMap {
+    '/': unknown;
+    '/about': unknown;
+    '/products/$productId': unknown;
+    // ...
+  }
+}
+```
+
+Every typed API — `Link`'s `to`, `useNavigate`, `Route.useParams()`, `Route.useLoaderData()`, `getRoute()` — derives its literals from `keyof TypedRouterRouteMap`. The library itself never lists routes: your app registers them by generating this file. Add a route file, and the whole typed surface knows it on the next generation.
+
+## Deployment (static hosting)
+
+The router uses the History API (`pushState` + `popstate`) exclusively — there is no hash mode. Deep links and page refreshes therefore need an SPA fallback on static hosts: every path must serve `index.html`, otherwise refreshing e.g. `/about` returns 404.
+
+Vercel (`vercel.json`):
+
+```json
+{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
+```
+
+Netlify (`public/_redirects`):
+
+```text
+/*    /index.html   200
+```
+
+The host rewrite only serves the app shell. To render your own UI for unknown client-side URLs, add a catch-all route (`$.tsx`) — see [File Conventions](#file-conventions).
+
+## API
+
+### `<Router />`
+
+Rendered once. Owns browser URL/history and the global store.
 
 ```tsx
-<Link
-  to="/products/$productId"          // Typed: generated route ID (with params if required)
-  params={{ productId: '123' }}       // Required if the ID has $segments
-  toRaw="/plain/url"                 // Escape hatch: raw URL, unchecked
-  search={{ tab: 'details' }}
-  state={{ from: 'home' }}
-  prefetch="hover"
-  hoverPrefetchDelay={100}
-  exact={false}
-  activeClassName="active"
-  pendingClassName="loading"
-  className={({ isActive, isPending }) => ...}
-  style={({ isActive }) => ...}
-  beforeNavigate={async () => ...}
-  as={(props, { isActive, isPending }) => <CustomElement {...props} />}
-/>
+import { Router } from 'clear-safe-router';
+import { routeTree } from './routeTree.gen';
+
+<Router routes={routeTree} />
 ```
 
-## Generated Files
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `routes` | `RouteNode` | required | The generated `routeTree` |
+| `notFound` | `ReactNode` | `<p>Not found</p>` | Rendered when no route matches the URL |
+| `pendingFallback` | `ReactNode` | `undefined` | Global fallback shown while the first navigation is pending |
+| `errorFallback` | `ComponentType<{ error: Error }>` | `undefined` | Global error view for routes without their own `errorFallback` |
+| `errorBoundary` | `ComponentType<{ children }>` | `undefined` | Custom error boundary around the route tree (catches render-time errors) |
+| `maxCacheSize` | `number` | `100` | Maximum cached loader entries; the least recently used entry is evicted when the limit is reached (the active route's entry is never evicted) |
+| `isAnimated` | `boolean` | `false` | Enable page transitions via the native View Transitions API |
+| `animationDuration` | `number` | browser default | Transition duration in ms |
+| `context` | `Record<string, unknown>` | `{}` | Initial router context |
+| `defaultStaleTime` | `number` | `0` | Default time before cached loader data is considered stale |
+| `defaultRetry` | `number \| { count, delay }` | `undefined` | Default revalidation retry policy |
+| `defaultPrefetch` | `'hover' \| 'render' \| 'viewport' \| 'none' \| 'auto'` | `'hover'` | Default prefetch strategy for `Link`s. `'auto'` resolves at hover-time: `hover` on desktop, `viewport` on mobile |
+| `defaultHoverPrefetchDelay` | `number` | `150` | Hover delay in ms before prefetching |
+| `defaultMinLoaderDuration` | `number` | `0` | Default minimum time the pending fallback stays visible (anti-flicker) |
+| `defaultBeforeLoad` | hook | `undefined` | Runs before every navigation (before the leaf route's own `beforeLoad`) |
+| `defaultAfterLoad` | hook | `undefined` | Runs after every successful navigation (after the leaf route's own `afterLoad`) |
+| `defaultScrollRestorationBehavior` | `'auto' \| 'smooth' \| 'instant'` | `'auto'` | Default scroll restoration behavior |
+| `revalidateOnFocus` | `boolean` | `false` | Stale-only revalidation when the tab regains focus |
+| `revalidateOnReconnect` | `boolean` | `false` | Stale-only revalidation when the browser regains connectivity |
+| `enableCacheSnapshot` | `boolean` | `false` | Builds the snapshot consumed by [`useCacheSnapshot()`](#usecachesnapshot) |
 
-The generator produces a single file (do not edit manually):
+### `createFileRoute(id)(options)`
+
+The single export a route file provides. `id` is the file's route ID; the type layer checks it against the generated registry.
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `component` | `ComponentType \| LazyComponent` | The route's element. Omitted on parent routes: an implicit `<Outlet />` renders the child automatically |
+| `layout` | `ComponentType<{ children }>` | Wraps this route's content — see [Layouts](#layouts) |
+| `loader` | `({ params, search, context, signal, attempt, location }) => unknown \| Promise<unknown>` | Loads the route's data. Runs top-down (parent first), before the route renders |
+| `beforeLoad` | `({ params, search, context, location, redirect, setContext }) => void \| Promise<void>` | Runs for the matched (leaf) route only — see [`redirect`](#redirect-redirect-in-beforeload) |
+| `afterLoad` | `({ params, search, context, location }) => void \| Promise<void>` | Runs after a successful navigation to this route |
+| `actions` | `(args) => Record<string, (data) => unknown \| Promise<unknown>>` | Route mutations — see [Route Actions](#route-actions) |
+| `pendingFallback` | `ReactNode` | Shown while this route's loader (or first data load) is pending |
+| `errorFallback` | `ComponentType<{ error }>` \| `LazyComponent` | Error view for this route's loader/`beforeLoad` errors |
+| `staleTime` | `number` | ms before cached data is stale. `Infinity` keeps it fresh until invalidated, evicted or garbage-collected |
+| `gcTime` | `number` | ms an unused cache entry survives after navigating away before being garbage-collected |
+| `retry` | `number \| { count, delay }` | Revalidation retry policy — see [Retry](#retry) |
+| `optimistic` | `boolean` | Navigate instantly using stale cached data while it revalidates |
+| `pollingInterval` | `number` | Revalidate this route's data every N ms while active (ignores `staleTime`) |
+| `minLoaderDuration` | `number` | Minimum time the pending fallback stays visible |
+| `scrollRestoration` | `boolean \| string[]` | Restore window scroll (`true`) or named containers (array of element `id`s) |
+| `scrollRestorationBehavior` | `'auto' \| 'smooth' \| 'instant'` | Scroll behavior for restoration |
+
+**Loader/hook args:**
+
+```ts
+{
+  params: Record<string, string>;     // URL params matched for THIS route
+  search: Record<string, string>;     // URL search parameters
+  context: Record<string, unknown>;   // router context
+  location: RouterLocation;           // { pathname, search, state }
+}
+```
+
+The `loader` additionally receives:
+
+```ts
+{
+  signal: AbortSignal; // aborted when a newer navigation supersedes this one — pass to fetch()
+  attempt: number;     // 1-based attempt counter: 1 on first try, 2+ on retries
+}
+```
+
+> **Note:** `beforeLoad` runs only for the route that matched the URL (plus the global `defaultBeforeLoad`). It is **not inherited** from parent routes — put an auth guard on the leaf route or use `defaultBeforeLoad` for app-wide checks.
+
+**What the generated `Route` object gives you** (typed per route ID):
+
+```tsx
+import { Route } from './routes/products/$productId';
+
+Route.useParams();       // { productId: string } — typed
+Route.useSearch();       // Record<string, string>
+Route.useLoaderData();   // loader return type — inferred, no generics needed
+Route.useRouteStatus();  // 'idle' | 'pending' | 'active' | 'optimistic' | 'error'
+```
+
+For imperative access anywhere (even outside the router), `getRoute` returns the same typed API:
+
+```tsx
+import { getRoute } from 'clear-safe-router';
+
+const productRoute = getRoute('/products/$productId');
+productRoute.useParams().productId; // typed: string
+productRoute.useLoaderData();       // typed from the route's loader
+```
+
+### Nested routes & layouts
+
+A folder nests under its `route.tsx` (or sibling file). A parent route needs **no component**: the router renders an implicit `<Outlet />` for any route whose children match. Add a `component` only when the parent itself renders content — then it must render `<Outlet />` where children appear.
+
+```tsx
+// src/routes/nest/route.tsx — layout-only parent
+import { createFileRoute, Outlet } from 'clear-safe-router';
+
+export const Route = createFileRoute('/nest')({
+  component: Outlet, // or omit — implicit
+});
+```
+
+```tsx
+// src/routes/nest/$nestId/route.tsx — chrome + outlet
+export const Route = createFileRoute('/nest/$nestId')({
+  layout: NestChildLayout,
+  component: Outlet,
+});
+```
+
+```tsx
+// src/routes/nest/$nestId/index.tsx — the page itself
+export const Route = createFileRoute('/nest/$nestId/')({
+  loader: ({ params }) => fetchNest(params.nestId),
+  staleTime: Infinity,
+  pendingFallback: <ProductSkeleton />,
+  component: NestChildPage,
+});
+```
+
+**Layouts** are declared per route with `layout` and are passed `children`:
+
+- A route's `layout` wraps its content *and* every descendant rendered through its outlet — so layouts stack outermost-first as you go deeper.
+- Layouts survive child navigation, including navigations that run child loaders: only the content below swaps; the shared chrome, its state and DOM identity stay alive.
+- Pass a stable reference (module-scope component). Layouts are components, not elements: `layout: Shell`, not `layout: <Shell />`.
+
+> **Splitting a parameterized section.** When a dynamic route (`$nestId.tsx`) owns both its own page and child routes, prefer the folder form: `nest/$nestId/route.tsx` (layout + outlet) plus `nest/$nestId/index.tsx` (the page, its loader and its cache entry). The index route only matches when no child does, so its loader doesn't re-run on child URLs and its typed `useParams()` stays exactly `{ nestId }`.
+
+### `Link`
+
+Typed client-side navigation with active/pending state, prefetch support, and custom-element rendering.
+
+The signature rule: **`to` for a known route, `params` for its `$segments`** — route existence and param shape are checked at compile time:
+
+```tsx
+<Link to="/products/$productId" params={{ productId: '7' }}>Show product</Link>
+<Link to="/about">About</Link>
+
+<Link to="/does-not-exist" />
+// ❌ compile error: not a registered route ID
+
+<Link to="/products/$productId" />
+// ❌ compile error: params missing
+
+<Link to="/products/$productId" params={{ id: '7' }} />
+// ❌ compile error: wrong param name
+```
+
+Escape hatch for runtime-computed URLs:
+
+```tsx
+<Link toRaw={`/products/${id}/print`}>Print view</Link>
+```
+
+Catch-all routes take their special param:
+
+```tsx
+<Link to="/$" params={{ _splat: 'docs/getting-started' }}>Docs</Link>
+```
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `to` | route ID (typed) | required (unless `toRaw`) | Target route ID; must exist in the generated registry |
+| `toRaw` | `string` | required (unless `to`) | Raw URL escape hatch |
+| `params` | `Record<string, string \| number>` | required for `$segments` | Segment values (URL-encoded). Missing params throw at runtime and fail type checking |
+| `search` | `string \| Record<string, string \| number \| boolean \| null \| undefined>` | `undefined` | Query string or object appended to the target |
+| `state` | `unknown` | `undefined` | Arbitrary value attached to the history entry |
+| `replace` | `boolean` | `false` | Replace the history entry instead of pushing |
+| `exact` | `boolean` | `false` | When `false`, the link is also active on nested URLs (`/settings` active at `/settings/profile`) |
+| `prefetch` | `'hover' \| 'render' \| 'viewport' \| 'none'` | `Router` config | Per-link prefetch strategy override |
+| `hoverPrefetchDelay` | `number` | `Router` config | Per-link hover delay override |
+| `beforeNavigate` | `() => Promise<void>` | `undefined` | Awaited before navigation starts |
+| `as` | `(props: ElementProps<T>, state: LinkState) => ReactElement` | renders `<a>` | Custom element rendering — see [Custom elements via `as`](#custom-elements-via-as) |
+| `children` | `ReactNode` | required | Link content |
+| `className` | `string \| ({ isActive, isPending }) => string` | `undefined` | Class name(s), optionally dynamic |
+| `style` | `CSSProperties \| ({ isActive, isPending }) => CSSProperties` | `undefined` | Inline styles, optionally dynamic |
+| `activeClassName` | `string` | `'active-link'` | Applied when the link matches the current URL |
+| `pendingClassName` | `string` | `'pending-link'` | Applied while the link's target is loading |
+
+Active matching: `'/'` matches only exactly `'/'`; any other target is active on exact match or — with the default `exact={false}` — on nested URLs too. Pass `exact` on contextual links (e.g. a back-link to `/settings`) when a child URL should not keep the link active.
+
+**Accessibility:** active links expose `aria-current="page"`, loading targets expose `aria-busy="true"`; both are omitted when inactive. Extra `data-*`/`aria-*` props are forwarded to the rendered element.
+
+**State values:** `isActive` — the link matches the current URL (respecting `exact`); `isPending` — the target route is currently loading.
+
+#### Prefetch strategies
+
+| Strategy | Behavior |
+|----------|----------|
+| `'hover'` | Prefetches on hover (configurable delay) |
+| `'render'` | Prefetches immediately when the link is rendered — use sparingly |
+| `'viewport'` | Prefetches when the link enters the viewport (IntersectionObserver, 250ms dwell) |
+| `'none'` | No prefetching |
+
+> A prefetched entry stays fresh for 30 seconds: the first navigation within that window reuses it without running the loader. After that, the route's normal `staleTime` applies. Prefetch never shortens a longer route `staleTime`. Prefetches are queued with bounded concurrency (4 parallel, 2 on mobile) and also preload the target route's lazy chunk.
+
+#### Styling link states with CSS
+
+Active and loading states are already in the DOM — attribute selectors cover most custom designs with zero JS:
+
+```css
+.gear-link[aria-current='page'] { color: steelblue; }
+.gear-link[aria-busy='true'] { opacity: 0.6; }
+```
+
+#### Custom elements via `as`
+
+`as` renders a custom element instead of `<a>`. The function receives the props to spread (`href`, `ref`, handlers, `className`, `style`, `children`) and — separately, so they are never forwarded to the DOM — `{ isActive, isPending }`:
+
+```tsx
+import { Link, type ElementProps } from 'clear-safe-router';
+
+const Button = ({ children, ...rest }: ElementProps<HTMLButtonElement>, { isActive }: LinkState) => (
+  <button {...rest} style={{ background: isActive ? 'tomato' : 'green' }}>
+    {children}
+  </button>
+);
+
+<Link to="/about" as={Button}>To about page</Link>
+```
+
+Every received prop **must** be spread onto the host element — dropping one silently disables the corresponding feature (`ref` → viewport prefetch never triggers, `onClick` → no navigation, `href` → no keyboard/screen-reader access). Because `as` is called as a plain function, avoid hooks inside it.
+
+For UI-kit components, wrap them inline and forward the props:
+
+```tsx
+<Link to="/about" as={(props, { isActive }) => <MantineButton {...props} variant={isActive ? 'light' : 'subtle'} />}>
+  To about page
+</Link>
+```
+
+## Loaders & Caching
+
+Loaders run **top-down** — every matched route's loader, parent first, before anything renders. Each route's data is cached under its own key (`route id + URL`), so a child page and its parent cache independently:
+
+```tsx
+// src/routes/products/$productId.tsx
+export const Route = createFileRoute('/products/$productId')({
+  loader: ({ params, signal }) => fetchProduct(params.productId, { signal }),
+  staleTime: 60_000,          // fresh for a minute
+  gcTime: 10 * 60_000,        // evicted from memory 10 min after you leave
+  pendingFallback: <ProductSkeleton />,
+});
+```
+
+Caching semantics:
+
+- **`staleTime`** — cached data is reused while fresh. Default `0`: every navigation revalidates. `Infinity` — fresh until explicitly invalidated, evicted or garbage-collected.
+- **`gcTime`** — a timer starts when you navigate away; when it fires, the entry is dropped from memory even if still fresh. Coming back before it fires cancels the timer. Independent from `staleTime` — data can be fresh and still get garbage-collected.
+- **`maxCacheSize`** — LRU bound. When the limit is reached, the least recently used entry is evicted (even a fresh one); the active route's entry is never evicted.
+- **Abortability** — pass `signal` to `fetch()`; a superseded navigation cancels the in-flight loader.
+- **`minLoaderDuration`** — keeps the pending fallback visible for at least N ms to avoid flicker on fast loaders.
+
+**Optimistic navigation** renders the stale cached value immediately while a fresh load runs:
+
+```tsx
+{ optimistic: true }
+```
+
+**Polling** revalidates on an interval while the route is active, ignoring `staleTime`; navigation away stops it. The deepest matched route declaring `pollingInterval` wins:
+
+```tsx
+{ pollingInterval: 5000 }
+```
+
+## Retry
+
+Transient failures can be retried automatically:
+
+```tsx
+retry: 3                       // up to 3 additional attempts
+retry: { count: 3, delay: 500 } // with 500ms between attempts
+```
+
+Route-level `retry` overrides `defaultRetry` on the `<Router>`. Retry is applied to the router's cache revalidation pipeline, so it works uniformly for initial loads, revalidations, `invalidate()` and `prefetch()` — the loader is the single source of truth for route data.
+
+## Redirects (`beforeLoad`)
+
+```tsx
+export const Route = createFileRoute('/dashboard')({
+  beforeLoad: ({ context, redirect }) => {
+    if (!context.isAuthorized) return redirect('/login');
+    // with state for the return trip:
+    // return redirect({ pathname: '/login', state: { from: '/dashboard' } });
+  },
+});
+```
+
+A redirect aborts the current navigation chain and loads the target location instead (replacing the history entry).
+
+## Route Actions
+
+Route-scoped mutations. After a successful action, the route it was triggered from is automatically invalidated (its loader re-runs in the background):
+
+```tsx
+export const Route = createFileRoute('/notes')({
+  loader: fetchNotes,
+  actions: ({ context }) => ({
+    add: async (data: { text: string }) => api.addNote(data.text, context),
+  }),
+  component: NotesPage,
+});
+```
+
+### `useSubmitAction()`
+
+Wraps a route action with submission state and gives you a native-form handler plus a raw `submit` for any form library:
+
+```tsx
+const { onSubmit, submit, isSubmitting, data, error } = useSubmitAction('add', {
+  onSuccess: () => {},
+  onError: (e) => {},
+  autoReset: true, // reset the native form after success
+});
+
+<form onSubmit={onSubmit}>...</form>      // native form
+await submit({ text: 'Buy milk' });       // any data source (react-hook-form, etc.)
+```
+
+### `useAction()`
+
+Direct access for programmatic mutations (dialogs, context menus, shortcuts) — same automatic invalidation:
+
+```tsx
+const add = useAction('add');
+await add({ text: 'Hello' });
+```
+
+## Error Handling
+
+- **Loader / `beforeLoad` errors** → the route's `errorFallback` (or the router's `errorFallback`). The error object is also available via typed status APIs.
+- **Render errors** → the router-level `errorBoundary` prop.
+
+```tsx
+<Router routes={routeTree} errorBoundary={AppErrorBoundary} />
+```
+
+## Lazy Routes
+
+```tsx
+import { createFileRoute, lazy } from 'clear-safe-router';
+
+export const Route = createFileRoute('/heavy')({
+  component: lazy(() => import('./pages/HeavyPage')),
+  pendingFallback: <PageSkeleton />,
+});
+```
+
+The lazy chunk is preloaded by prefetching links, and `pendingFallback` covers both the chunk load and the loader.
+
+## Deferred Data (React 19 `use()`)
+
+A loader may return unresolved promises — the router awaits only what the loader itself awaits:
+
+```tsx
+loader: async () => {
+  const summary = await fetchSummary();
+  const traffic = fetchTraffic(); // not awaited
+  return { summary, traffic };
+},
+```
+
+```tsx
+const Chart = () => {
+  const { traffic } = Route.useLoaderData();
+  return use(traffic); // suspends only the chart
+};
+```
+
+> Wrap deferred parts in their own error boundary — a rejected promise passed to `use()` is not caught by the route's `errorFallback`. Set `staleTime` generously enough to outlast the slowest deferred request.
+
+## Animations
+
+```tsx
+<Router routes={routeTree} isAnimated animationDuration={220} />
+```
+
+Uses the native View Transitions API; all loaders complete before the transition starts. Older browsers gracefully fall back to regular navigation (Chrome/Edge 111+, Safari 18+, Firefox 144+).
+
+## Scroll Restoration
+
+```tsx
+export const Route = createFileRoute('/feed')({
+  scrollRestoration: true,               // window scroll
+  scrollRestoration: ['feed-panel'],     // named scrollable containers by id
+  scrollRestorationBehavior: 'instant',
+});
+```
+
+Positions are captured on navigation away and restored when you come back. For content that arrives *after* the automatic restore (deferred data, late chunks, `useEffect` fetches), restore manually:
+
+```tsx
+const restoreScroll = useRestoreScroll();
+
+<Suspense fallback={<Skeleton />}>
+  <Table rows={data.rows} onReady={restoreScroll} />
+</Suspense>
+```
+
+Calling it is always safe — it does nothing when nothing is saved for the current route.
+
+## Hooks
+
+All hooks work outside `<Router>` — state lives in a global store. Only back/forward handling needs a mounted `<Router>`.
+
+### `useNavigate()`
+
+```tsx
+const navigate = useNavigate();
+
+navigate({ to: '/products/$productId', params: { productId: '7' } }); // typed
+navigate('/about?tab=info');                                          // raw string
+navigate({ toRaw: '/runtime/path', search: '?x=1', state: { from: 'home' }, replace: true });
+navigate(-1);                                                         // back
+```
+
+The typed form checks route existence and params exactly like `<Link to>`. Navigation state is read via `useLocation()`.
+
+### `useParams()`
+
+Returns the **leaf route's** params (untyped). For typed params, prefer the route's own hook:
+
+```tsx
+const { productId } = Route.useParams(); // typed to this route
+```
+
+### `useLoaderState()`
+
+Returns the leaf route's data and errors:
+
+```tsx
+const { data, loaderError, beforeLoadError } = useLoaderState();
+```
+
+Prefer `Route.useLoaderData()` — it is typed per route and reads *that route's* data, not the leaf's.
+
+### `useLocation()`
+
+```tsx
+const { pathname, search, state } = useLocation();
+```
+
+### `useRouteStatus()`
+
+```tsx
+const status = useRouteStatus();                                          // 'idle' | 'pending' | 'active' | 'optimistic' | 'error'
+const isLoading = useRouteStatus(s => s === 'pending' || s === 'optimistic');
+```
+
+Useful for global loading indicators.
+
+### `useRouterContext()`
+
+```tsx
+const { context, setContext } = useRouterContext();
+setContext({ ...context, user: { name: 'John' } });
+```
+
+### `useSearchParams()`
+
+```tsx
+const { searchParams, getSearchParams, setSearchParams } = useSearchParams();
+
+getSearchParams('brand');              // 'nike' | ['nike', 'reebok'] | null
+setSearchParams('brand', 'nike');      // ?brand=nike
+setSearchParams('brand', ['a', 'b']);  // ?brand=a&brand=b
+setSearchParams(prev => { prev.set('page', '2'); return prev; }); // functional
+```
+
+`setSearchParams` replaces the current history entry in place and does **not** re-run the loader. If the loader depends on query params, navigate explicitly or call `await useInvalidate()()` after.
+
+### `useInvalidate()`
+
+Revalidates cached route data:
+
+```tsx
+const invalidate = useInvalidate();
+
+await invalidate();                    // current route
+await invalidate('/posts');            // concrete path
+await invalidate(['/posts', '/profile']); // several
+await invalidate('/post/$id');         // pattern — every cached match: /post/1, /post/17, ...
+await invalidate('/posts', { withChildren: true }); // + cached child URLs
+await invalidate('/notes', { staleOnly: true });    // only already-stale entries
+await invalidate('/about', { force: false });       // cache-only (never fetch uncached paths)
+```
+
+Returns `{ path, data, error }[]` — one entry per revalidated route. A successful revalidation of the active route also resets its status to `active`, so recovering from an error page is just `await invalidate()`. Pattern targets are always cache-only — they never fetch the pattern itself.
+
+### `useCacheSnapshot()`
+
+Read-only live snapshot of the loader cache, for devtools panels. Requires `<Router enableCacheSnapshot>`:
+
+```tsx
+const entries = useCacheSnapshot();
+// { path, data, timestamp, staleTime, reason, gcExpiresAt, gcDuration, isCached, isLoading }[]
+```
+
+Entries appear for in-flight first loads too (`isCached: false, isLoading: true`), and revalidating entries keep `data` so a panel can show the previous value while refreshing.
+
+### `useBlocker(callback)`
+
+Blocks navigation — including browser Back/Forward — while the callback returns `true`:
+
+```tsx
+const { state, process, reset } = useBlocker(({ nextLocation }) => hasUnsavedChanges);
+
+useEffect(() => {
+  if (state === 'blocked') {
+    if (confirm('Leave without saving?')) process();
+    else reset();
+  }
+}, [state, process, reset]);
+```
+
+| Return | Description |
+|--------|-------------|
+| `state` | `'unblocked'` — not armed; `'charged'` — armed, nothing attempted; `'blocked'` — an attempt was just intercepted |
+| `blocked` | `state === 'blocked'` |
+| `process()` | Confirm and complete the blocked navigation |
+| `reset()` | Cancel and stay |
+
+The callback receives `{ location, nextLocation, context }`. When a Back/Forward press is blocked, the URL change is reverted until `process()`/`reset()` is called.
+
+### `useRestoreScroll()`
+
+Manual scroll restoration callback — see [Scroll Restoration](#scroll-restoration).
+
+## Requirements
+
+- React 18+ (React 19 for deferred `use()` data)
+- Vite 5+
+- Default exports for lazily loaded route components
+
+## Repository Structure
 
 ```
-routeTree.gen.ts        # routeTree (runtime tree) + augmentation of TypedRouterRouteMap for typed APIs
+src/            # the library (runtime, typed API, Vite plugin, tests)
+playground/     # the demo app: pages/, routes/, its generated route tree
+scripts/        # the route generator (also available as a library script)
 ```
 
 ## License
