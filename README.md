@@ -442,6 +442,8 @@ export const Route = createFileRoute('/products/$productId')({
 
 Caching semantics:
 
+- **Route-scoped keys** — each route's data is cached under `routeId|ownPath+search`, where `ownPath` is the part of the URL the route's own pattern consumes. A parent route shares one cache entry across all deeper URLs: navigating between sibling children (`/shop/a/1` → `/shop/a/2`) never refetches the parent's loader, while a different param value (`/shop/b`) is genuinely new data. Trailing slashes collapse into the same entry (`/users/1/` ≡ `/users/1`).
+
 - **`staleTime`** — cached data is reused while fresh. Default `0`: every navigation revalidates. `Infinity` — fresh until explicitly invalidated, evicted or garbage-collected.
 - **`gcTime`** — a timer starts when you navigate away; when it fires, the entry is dropped from memory even if still fresh. Coming back before it fires cancels the timer. Independent from `staleTime` — data can be fresh and still get garbage-collected.
 - **`maxCacheSize`** — LRU bound. When the limit is reached, the least recently used entry is evicted (even a fresh one); the active route's entry is never evicted.
@@ -647,6 +649,23 @@ Prefer `Route.useLoaderData()` — it is typed per route and reads *that route's
 ```tsx
 const { pathname, search, state } = useLocation();
 ```
+
+#### Where you came from
+
+Every location carries `prevLocation` — the pathname and search of the location you navigated away from. It is a flat pointer (`{ pathname, search }`), not a history chain, and is `undefined` until the first navigation completes.
+
+```tsx
+const location = useLocation();
+// After visiting /shop, then /shop/cats:
+//   location.prevLocation === { pathname: '/shop', search: '' }
+
+// A contextual back link
+<button onClick={() => routerRuntime.navigate(location.prevLocation ?? { toRaw: '/' })}>
+  Back
+</button>
+```
+
+After a guard redirect, `prevLocation` stays the URL the user **tried** to reach — the `/protected` page they asked for, not the `/login` they landed on — so a "back to the page you wanted" link points at the right thing. Back/forward navigation (popstate) updates it too: the page you pop away from becomes the new `prevLocation`.
 
 ### `useRouteStatus()`
 

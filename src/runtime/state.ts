@@ -1,5 +1,6 @@
 import { create } from "../create";
 import { WINDOW_TOP, WINDOW_LEFT } from "../constants";
+import { splitPath } from "./match";
 import type {
   BlockerState,
   CacheReason,
@@ -42,6 +43,10 @@ export const snapshotRef: { current: RouterSnapshot } = {
   },
 };
 export const navigationSeqRef: { current: number } = { current: 0 };
+/** Last successfully committed location — unlike `snapshot().location`, which is
+ * overwritten with the target URL during the pending phase, so guard redirects
+ * can still see where the navigation actually came from. */
+export const committedLocationRef: { current: RouterLocation | undefined } = { current: undefined };
 export const activeControllerRef: { current: AbortController | undefined } = {
   current: undefined,
 };
@@ -83,7 +88,18 @@ export const updateSnapshot = (
 ) => {
   snapshotRef.current = mutate(snapshotRef.current);
 };
-export const routeKey = (route: RouteNode, location: RouterLocation) =>
-  `${route.id}|${location.pathname}${location.search}`;
+/**
+ * Cache key for a route's loader data: `routeId|ownPath+search`.
+ * `ownPath` is the part of the URL the route's own pattern consumes — the first N
+ * segments of the pathname (the whole pathname for the wildcard catch-all). A parent
+ * route therefore shares one cache entry across all deeper URLs: navigating to a
+ * sibling child never refetches the parent's loader, and search stays part of the
+ * key because loaders receive it.
+ */
+export const routeKey = (route: RouteNode, location: RouterLocation) => {
+  const actual = splitPath(location.pathname);
+  const own = route.path.endsWith("*") ? actual : actual.slice(0, splitPath(route.path).length);
+  return `${route.id}|/${own.join("/")}${location.search}`;
+};
 export const snapshot = () => snapshotRef.current;
 export type { RouteMatch };

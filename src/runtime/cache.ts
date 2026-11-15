@@ -7,8 +7,10 @@ const isFresh = (entry?: CacheEntry) => !!entry && (Date.now() - entry.updatedAt
 const touch = (key: string, entry: CacheEntry) => { cache.delete(key); entry.lastUsed = Date.now(); cache.set(key, entry); };
 const evict = () => {
   while (cache.size > routerConfig.maxCacheSize) {
-    const currentPrefix = `${snapshot().location.pathname}${snapshot().location.search}`;
-    const oldest = [...cache.keys()].find(key => !key.endsWith(`|${currentPrefix}`)) ?? cache.keys().next().value;
+    // Active entries are computed from the matched chain: a parent's key no longer
+    // ends with the current URL once keys are route-scoped, so a set is required.
+    const activeKeys = new Set(snapshot().matches.map(match => routeKey(match.route, snapshot().location)));
+    const oldest = [...cache.keys()].find(key => !activeKeys.has(key)) ?? cache.keys().next().value;
     if (!oldest) break;
     const entry = cache.get(oldest);
     if (entry?.timer) clearTimeout(entry.timer);

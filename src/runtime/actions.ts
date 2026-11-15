@@ -16,6 +16,7 @@ import {
   flights,
   loaderErrors,
   beforeLoadErrors,
+  committedLocationRef,
   navigationSeqRef,
   routeErrors,
   routeKey,
@@ -290,6 +291,7 @@ export const resetRouterState = () => {
   suppressPopstateRef.current = false;
   routesRef.current = undefined;
   navigationSeqRef.current++;
+  committedLocationRef.current = undefined;
   snapshotRef.current = {
     location: initialLocation(),
     status: "idle",

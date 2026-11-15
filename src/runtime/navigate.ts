@@ -4,6 +4,7 @@ import {
   blockerStateStore,
   blockedTargetStore,
   cache,
+  committedLocationRef,
   contextStore,
   dataStore,
   loaderErrors,
@@ -45,6 +46,7 @@ export const commit = (
       history.replaceState(next.location.state ?? null, "", url);
     else if (url !== `${window.location.pathname}${window.location.search}`)
       history.pushState(next.location.state ?? null, "", url);
+    committedLocationRef.current = next.location;
     setSnapshot(next);
     emit();
   };
@@ -69,7 +71,7 @@ export const commit = (
 };
 export const loadLocation = async (
   location: RouterLocation,
-  options: { replace?: boolean; fromPop?: boolean } = {},
+  options: { replace?: boolean; fromPop?: boolean; prevLocation?: { pathname: string; search: string } } = {},
 ) => {
   if (!options.fromPop) captureScroll(snapshotGetter().location);
   if (blockerStateStore.getState() === "charged") {
@@ -83,6 +85,12 @@ export const loadLocation = async (
   activeControllerRef.current?.abort();
   const controller = new AbortController();
   activeControllerRef.current = controller;
+  // `prevLocation` is threaded explicitly on guard redirects (the attempted URL);
+  // otherwise it is the last committed location, or absent before the first one.
+  // It is a flat projection (pathname + search only) — a pointer, not a history chain.
+  const from = options.prevLocation ?? committedLocationRef.current;
+  const prevLocation = from ? { pathname: from.pathname, search: from.search } : undefined;
+  const nextLocation: RouterLocation = prevLocation ? { ...location, prevLocation } : { ...location };
   const matches = matchRoutes(location.pathname, location, routesRef.current);
   if (
     import.meta.env.DEV &&
@@ -108,7 +116,7 @@ export const loadLocation = async (
   }
   setSnapshot({
     ...snapshotGetter(),
-    location,
+    location: nextLocation,
     status: optimistic ? "optimistic" : needsLoading ? "pending" : "active",
     matches,
     data,
@@ -167,7 +175,12 @@ export const loadLocation = async (
         if (redirected) {
           if (seq !== navigationSeqRef.current || controller.signal.aborted)
             return;
-          await loadLocation(redirected, { replace: true });
+          // The user tried to reach `location` — after a redirect that attempted
+          // URL stays `prevLocation` (e.g. for a "back to the page you wanted" link).
+          await loadLocation(redirected, {
+            replace: true,
+            prevLocation: { pathname: location.pathname, search: location.search },
+          });
           return;
         }
       }
@@ -210,9 +223,10 @@ export const loadLocation = async (
     } // end of the guard chain block
     if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
     const status = errors.size ? "error" : "active";
-    setSnapshot({ location, status, matches, data, errors });
+    setSnapshot({ location: nextLocation, status, matches, data, errors });
     dataStore.setState(new Map(data));
     if (options.fromPop) {
+      committedLocationRef.current = nextLocation;
       history.replaceState(
         location.state ?? null,
         "",
@@ -221,7 +235,7 @@ export const loadLocation = async (
       emit();
     } else
       commit(
-        { location, status, matches, data, errors },
+        { location: nextLocation, status, matches, data, errors },
         options.replace,
         false,
       );
@@ -251,7 +265,7 @@ export const loadLocation = async (
     if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
     const fallback = matches.at(-1);
     if (fallback) errors.set(fallback.route.id, toError(error));
-    setSnapshot({ location, status: "error", matches, data, errors });
+    setSnapshot({ location: nextLocation, status: "error", matches, data, errors });
     dataStore.setState(new Map(data));
     if (options.fromPop) {
       history.replaceState(
@@ -262,7 +276,7 @@ export const loadLocation = async (
       emit();
     } else
       commit(
-        { location, status: "error", matches, data, errors },
+        { location: nextLocation, status: "error", matches, data, errors },
         options.replace,
         false,
       );

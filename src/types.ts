@@ -16,7 +16,7 @@ export type BlockerState = 'blocked' | 'unblocked' | 'charged';
 export type SearchParams = Record<string, string>;
 export type RouteStatus = 'idle' | 'pending' | 'active' | 'optimistic' | 'error';
 export type Retry = number | { count: number; delay: number };
-export type RouterLocation = { pathname: string; search: string; state?: unknown; key?: string };
+export type RouterLocation = { pathname: string; search: string; state?: unknown; key?: string; prevLocation?: { pathname: string; search: string } };
 export type LoaderArgs<P extends Record<string, string> = Record<string, string>> = {
   params: P;
   search: SearchParams;

@@ -290,7 +290,7 @@ describe('invalidate parity (original invalidate.test.ts)', () => {
     expect(cachedAt('/users/3')?.data).toBe('user:3@/users/3');
   });
 
-  it('treats a trailing slash as the same pathname but still not a sibling', async () => {
+  it('collapses a trailing-slash URL into the same cache entry and still skips siblings', async () => {
     const dynamicLoader = vi.fn(async ({ params, location }: any) => `user:${params.id}@${location.pathname}`);
     const tree = root([
       home(),
@@ -301,11 +301,12 @@ describe('invalidate parity (original invalidate.test.ts)', () => {
     await act(async () => { await routerRuntime.navigate('/users/1/'); });
     await act(async () => { await routerRuntime.navigate('/users/2'); });
     dynamicLoader.mockClear();
+    // '/users/1/' and '/users/1' match the same route with the same params,
+    // so they share one cache entry and one revalidation.
     const result = await runInvalidate('/users/1');
-    expect(result.map(entry => entry.path).sort()).toEqual(['/users/1', '/users/1/']);
-    expect(dynamicLoader).toHaveBeenCalledTimes(2);
-    const requestedPaths = dynamicLoader.mock.calls.map(([args]) => args.location.pathname).sort();
-    expect(requestedPaths).toEqual(['/users/1', '/users/1/']);
+    expect(result.map(entry => entry.path)).toEqual(['/users/1']);
+    expect(dynamicLoader).toHaveBeenCalledTimes(1);
+    expect(dynamicLoader.mock.calls[0]?.[0].location.pathname).toBe('/users/1');
     expect(cachedAt('/users/2')?.data).toBe('user:2@/users/2');
   });
 
