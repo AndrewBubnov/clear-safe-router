@@ -22,9 +22,9 @@ export const typedRouter = (options: TypedRouterPluginOptions = {}): Plugin => {
         cwd: packageRoot,
         env: {
           ...process.env,
-          TYPED_ROUTER_ROOT: root,
-          TYPED_ROUTER_ROUTES: path.relative(root, routeDir),
-          TYPED_ROUTER_OUTPUT: path.relative(root, generatedFile),
+          CLEAR_ROUTER_ROOT: root,
+          CLEAR_ROUTER_ROUTES: path.relative(root, routeDir),
+          CLEAR_ROUTER_OUTPUT: path.relative(root, generatedFile),
         },
         stdio: 'pipe',
       });
@@ -41,7 +41,7 @@ export const typedRouter = (options: TypedRouterPluginOptions = {}): Plugin => {
   const isRouteFile = (file: string) => file === routeDir || file.startsWith(routeDir + path.sep);
 
   return {
-    name: 'typed-router:file-routes',
+    name: 'clear-safe-router:file-routes',
     enforce: 'pre',
     configResolved(config) {
       root = config.root;

@@ -1,4 +1,4 @@
-import { Link, useRouteStatus, useLoaderState } from 'typed-router';
+import { Link, useRouteStatus, useLoaderState } from 'clear-safe-router';
 import { getCallCount } from './api';
 
 const OptimisticPage = () => {

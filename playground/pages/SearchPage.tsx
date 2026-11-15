@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'typed-router';
+import { Link, useSearchParams } from 'clear-safe-router';
 import { Button } from '@mantine/core';
 import { motion } from 'motion/react';
 

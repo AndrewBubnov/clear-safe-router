@@ -1,6 +1,6 @@
 import type { Store, useGlobalState } from './create';
 
-export const LAZY_MARKER = Symbol('typed-router-lazy');
+export const LAZY_MARKER = Symbol('clear-safe-router-lazy');
 export type SetStateFn<T> = {
   (action: T): void;
   (action: (prevState: T) => T): void;

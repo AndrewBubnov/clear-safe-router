@@ -1,6 +1,6 @@
 import { Suspense, use } from 'react';
 import { Badge, Button, Group, Progress, RingProgress, Stack, Text, ThemeIcon } from '@mantine/core';
-import { Link, useInvalidate, useLoaderState } from 'typed-router';
+import { Link, useInvalidate, useLoaderState } from 'clear-safe-router';
 import { getCallCount } from './api';
 import { ChartFallback } from './Skeletons';
 

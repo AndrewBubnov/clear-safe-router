@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Button } from '@mantine/core';
-import { Link, useInvalidate, useLoaderState } from 'typed-router';
+import { Link, useInvalidate, useLoaderState } from 'clear-safe-router';
 
 const RetryErrorPage = () => {
 	const { loaderError } = useLoaderState();

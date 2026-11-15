@@ -75,10 +75,14 @@ export const formatSearch = (search?: string | Record<string, string | number | 
 };
 export const interpolate = (to: string, params?: Record<string, string | number>) => {
   if (!params) return to;
-  return to.replace(/\$([A-Za-z][A-Za-z0-9_]*)/g, (_full, key: string) => {
-    const value = params[key];
-    if (value === undefined) throw new Error(`Missing route parameter "${key}" for "${to}"`);
-    return encodeURIComponent(String(value));
+  // `$name` is a named segment; a bare `$` is the catch-all segment (`_splat`).
+  // The splat keeps its slashes — only individual segments are encoded.
+  return to.replace(/\$([A-Za-z][A-Za-z0-9_]*)?(?![A-Za-z0-9_])/g, (_full, key: string | undefined) => {
+    const name = key ?? "_splat";
+    const value = params[name];
+    if (value === undefined) throw new Error(`Missing route parameter "${name}" for "${to}"`);
+    const encoded = encodeURIComponent(String(value));
+    return name === "_splat" ? encoded.replace(/%2F/g, "/") : encoded;
   });
 };
 export const resolveTarget = (target: { to?: string; toRaw?: string; params?: Record<string, string | number>; search?: string | Record<string, string | number | boolean | null | undefined>; state?: unknown }) => {

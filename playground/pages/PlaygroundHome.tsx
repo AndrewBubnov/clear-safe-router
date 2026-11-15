@@ -17,7 +17,7 @@ import {
 	IconSitemap,
 	IconStack2,
 } from '@tabler/icons-react';
-import { Link } from 'typed-router';
+import { Link } from 'clear-safe-router';
 import { isMobileViewport } from './utils';
 
 type Tone = 'indigo' | 'cyan' | 'rose' | 'amber' | 'violet' | 'teal';

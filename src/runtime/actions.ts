@@ -58,7 +58,9 @@ export const navigate = async (
   }
   const next =
     typeof target === "string" ? splitLocation(target) : resolveTarget(target);
-  await loadLocation(next);
+  await loadLocation(next, {
+    replace: typeof target !== "string" && target.replace === true,
+  });
 };
 export const invalidate = async (
   target?: string | string[] | { to: string; params?: Record<string, string> },

@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Badge, MantineProvider, type MantineTheme } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { Router, useCacheSnapshot, useRouteStatus, type RouteStatus } from 'typed-router';
+import { Router, useCacheSnapshot, useRouteStatus, type RouteStatus } from 'clear-safe-router';
 import { CacheVisualizer } from './pages/CacheVisualizer';
 import { PlaygroundNav } from './pages/PlaygroundNav';
 import { routeTree } from './routeTree.gen';

@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 const script = path.resolve('scripts/generate-routes.mjs');
 const dirs: string[] = [];
 const createFixture = async (files: Record<string, string>) => {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'typed-router-'));
+  const root = await mkdtemp(path.join(os.tmpdir(), 'clear-safe-router-'));
   dirs.push(root);
   for (const [name, content] of Object.entries(files)) {
     const file = path.join(root, 'src/routes', name);
@@ -17,7 +17,7 @@ const createFixture = async (files: Record<string, string>) => {
   return root;
 };
 const route = (id: string) => `import { createFileRoute } from '../../index';\nexport const Route = createFileRoute('${id}')({});\n`;
-const generate = (root: string) => execFileSync(process.execPath, [script], { env: { ...process.env, TYPED_ROUTER_ROOT: root }, encoding: 'utf8', stdio: 'pipe' });
+const generate = (root: string) => execFileSync(process.execPath, [script], { env: { ...process.env, CLEAR_ROUTER_ROOT: root }, encoding: 'utf8', stdio: 'pipe' });
 
 afterEach(async () => { await Promise.all(dirs.splice(0).map(dir => rm(dir, { recursive: true, force: true }))); });
 

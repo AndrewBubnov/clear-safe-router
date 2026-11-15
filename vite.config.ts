@@ -13,10 +13,14 @@ export default defineConfig({
   server: {
     open: '/playground/',
   },
+  build: {
+    // Keep playground output out of the library's dist/ (published via `files`).
+    outDir: 'dist-playground',
+  },
   resolve: {
     alias: [
-      { find: /^typed-router$/, replacement: '/src/index.tsx' },
-      { find: /^typed-router\/(.+)$/, replacement: '/src/$1' },
+      { find: /^clear-safe-router$/, replacement: '/src/index.tsx' },
+      { find: /^clear-safe-router\/(.+)$/, replacement: '/src/$1' },
       { find: /^@\/(.+)$/, replacement: '/playground/$1' },
     ],
   },

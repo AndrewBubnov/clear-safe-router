@@ -1,4 +1,4 @@
-import { Link, useLoaderState } from 'typed-router';
+import { Link, useLoaderState } from 'clear-safe-router';
 
 type QuotesData = { tick: number; quotes: { symbol: string; price: number }[] };
 

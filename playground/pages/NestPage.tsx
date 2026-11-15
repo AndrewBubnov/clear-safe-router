@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link } from 'typed-router';
+import { Link } from 'clear-safe-router';
 import { randomIds } from './api';
 
 const NestPage = () => {

@@ -1,4 +1,4 @@
-import { createFileRoute, lazy } from 'typed-router';
+import { createFileRoute, lazy } from 'clear-safe-router';
 
 import { DeferredSkeleton } from '@/pages/Skeletons';
 import { fetchDeferredDashboard } from '@/pages/api';

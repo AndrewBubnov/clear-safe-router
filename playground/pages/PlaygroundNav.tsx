@@ -13,7 +13,7 @@ import {
   IconSun,
   IconX,
 } from "@tabler/icons-react";
-import { Link, type LinkProps } from "typed-router";
+import { Link, type LinkProps } from "clear-safe-router";
 import { usePlaygroundSettings } from "./usePlaygroundSettings";
 import { NAV_LINK_AS } from "./NavLinkAs";
 

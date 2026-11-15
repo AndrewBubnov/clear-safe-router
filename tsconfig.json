@@ -21,10 +21,10 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "typed-router": [
+      "clear-safe-router": [
         "./src/index.tsx"
       ],
-      "typed-router/*": [
+      "clear-safe-router/*": [
         "./src/*"
       ],
       "@/*": [

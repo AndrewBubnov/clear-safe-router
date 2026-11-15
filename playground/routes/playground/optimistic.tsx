@@ -1,4 +1,4 @@
-import { createFileRoute, lazy } from 'typed-router';
+import { createFileRoute, lazy } from 'clear-safe-router';
 
 import { PageSkeleton } from '@/pages/Skeletons';
 import { fetchOptimisticValue } from '@/pages/api';

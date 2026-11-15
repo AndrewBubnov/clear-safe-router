@@ -1,4 +1,4 @@
-import { createFileRoute, lazy } from 'typed-router';
+import { createFileRoute, lazy } from 'clear-safe-router';
 
 import { ProductSkeleton } from '@/pages/Skeletons';
 import { fetchProduct } from '@/pages/api';

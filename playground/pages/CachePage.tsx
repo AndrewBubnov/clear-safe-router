@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Link, useInvalidate, useLoaderState, useRouterContext } from 'typed-router';
+import { Link, useInvalidate, useLoaderState, useRouterContext } from 'clear-safe-router';
 import { Button, RingProgress, Stack, Text } from '@mantine/core';
 import { CACHE_STALE_TIME, getCallCount, HEAVY_GC_TIME } from './api';
 import { usePlaygroundSettings } from './usePlaygroundSettings';

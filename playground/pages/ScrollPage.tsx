@@ -1,4 +1,4 @@
-import { Link, useRestoreScroll } from 'typed-router';
+import { Link, useRestoreScroll } from 'clear-safe-router';
 import { Button } from '@mantine/core';
 
 const feedRows = Array.from({ length: 60 }, (_, i) => `Feed row ${i + 1}`);

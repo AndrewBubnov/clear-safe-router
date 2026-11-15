@@ -99,7 +99,7 @@ export const loadLocation = async (
   ) {
     unmatchedRouteWarnings.add(location.pathname);
     console.warn(
-      `[typed-router] No route matched "${location.pathname}". ` +
+      `[clear-safe-router] No route matched "${location.pathname}". ` +
         "Add a catch-all route ({ path: '*' }) or check the route path.",
     );
   }
@@ -255,7 +255,7 @@ export const loadLocation = async (
             location,
           });
         } catch (error) {
-          console.error("[typed-router] afterLoad failed:", error);
+          console.error("[clear-safe-router] afterLoad failed:", error);
         }
       }
     }
@@ -314,7 +314,7 @@ export const schedulePolling = (
         });
         emit();
       })
-      .catch((error) => console.error("[typed-router] polling failed:", error));
+      .catch((error) => console.error("[clear-safe-router] polling failed:", error));
   }, target.route.options.pollingInterval);
 };
 export const stopPolling = () => {

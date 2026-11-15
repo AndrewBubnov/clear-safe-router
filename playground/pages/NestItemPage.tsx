@@ -1,4 +1,4 @@
-import { Link } from 'typed-router';
+import { Link } from 'clear-safe-router';
 import { Route } from '../routes/playground/nest/$nestId/item/$itemId';
 import { getCallCount } from './api';
 

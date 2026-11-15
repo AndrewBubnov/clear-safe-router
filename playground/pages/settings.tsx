@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import type { RouterProps } from 'typed-router';
+import type { RouterProps } from 'clear-safe-router';
 import { SettingsContext } from './settings-context';
 import type { NavLinkAs } from './NavLinkAs';
 import { DEFAULT_MAX_CACHE_SIZE } from './constants';

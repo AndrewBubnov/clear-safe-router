@@ -1,4 +1,4 @@
-import { createFileRoute, lazy } from 'typed-router';
+import { createFileRoute, lazy } from 'clear-safe-router';
 
 import { PageSkeleton } from '@/pages/Skeletons';
 import { CACHE_STALE_TIME, fetchCachePayload } from '@/pages/api';

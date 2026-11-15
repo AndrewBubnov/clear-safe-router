@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Button as MantineButton } from '@mantine/core';
-import type { ElementProps, LinkProps } from 'typed-router';
+import type { ElementProps, LinkProps } from 'clear-safe-router';
 
 export type NavLinkAs = 'link' | 'mui' | 'mantine';
 

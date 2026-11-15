@@ -1,5 +1,5 @@
 import MuiButton from '@mui/material/Button';
-import type { ElementProps } from 'typed-router';
+import type { ElementProps } from 'clear-safe-router';
 
 type Props = ElementProps<HTMLAnchorElement> & { variant: 'contained' | 'text'; size: 'small' };
 

@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from 'typed-router';
+import { createFileRoute, Outlet } from 'clear-safe-router';
 
 import { NestChildLayout } from '@/pages/NestChildLayout';
 

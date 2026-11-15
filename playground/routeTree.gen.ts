@@ -31,10 +31,10 @@ import { Route as r28 } from "./routes/playground/settings";
 
 export const routeTree = { ...r0, path: "/", children: [{ ...r2, path: "/", children: [] }, { ...r1, path: "/*", children: [] }, { ...r3, path: "/playground", children: [{ ...r14, path: "/playground", children: [] }, { ...r4, path: "/playground/actions", children: [] }, { ...r5, path: "/playground/blocker", children: [] }, { ...r6, path: "/playground/cache", children: [{ ...r8, path: "/playground/cache", children: [] }, { ...r7, path: "/playground/cache/heavy", children: [] }, { ...r9, path: "/playground/cache/product", children: [{ ...r10, path: "/playground/cache/product/:productId", children: [] }] }] }, { ...r11, path: "/playground/dashboard", children: [] }, { ...r12, path: "/playground/deferred", children: [] }, { ...r13, path: "/playground/guard", children: [] }, { ...r15, path: "/playground/live", children: [] }, { ...r16, path: "/playground/nest", children: [{ ...r21, path: "/playground/nest", children: [] }, { ...r17, path: "/playground/nest/:nestId", children: [{ ...r18, path: "/playground/nest/:nestId", children: [] }, { ...r19, path: "/playground/nest/:nestId/item", children: [{ ...r20, path: "/playground/nest/:nestId/item/:itemId", children: [] }] }] }] }, { ...r22, path: "/playground/optimistic", children: [] }, { ...r23, path: "/playground/prefetch", children: [] }, { ...r25, path: "/playground/retry", children: [] }, { ...r24, path: "/playground/retry-raw", children: [] }, { ...r26, path: "/playground/scroll", children: [] }, { ...r27, path: "/playground/search", children: [] }, { ...r28, path: "/playground/settings", children: [] }] }] };
 
-import type {} from 'typed-router';
+import type {} from 'clear-safe-router';
 // The app augments the router library's route registry so the typed APIs
 // (Link `to`, useParams, useLoaderData, ...) resolve against this app's route IDs.
-declare module 'typed-router' {
+declare module 'clear-safe-router' {
   export interface TypedRouterRouteMap {
     "__root__": unknown;
     "/$": unknown;

@@ -1,4 +1,4 @@
-import { getRoute, Link, useLoaderState } from 'typed-router';
+import { getRoute, Link, useLoaderState } from 'clear-safe-router';
 import { getCallCount } from './api';
 
 const productRoute = getRoute('/playground/cache/product/$productId');

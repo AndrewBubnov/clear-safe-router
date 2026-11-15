@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLoaderState, useRouterContext } from 'typed-router';
+import { Link, useLoaderState, useRouterContext } from 'clear-safe-router';
 
 type Badge = { id: number; cached: boolean } | null;
 

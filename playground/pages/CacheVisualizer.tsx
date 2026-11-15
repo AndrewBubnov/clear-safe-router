@@ -1,5 +1,5 @@
 import { CSSProperties, useState } from 'react';
-import { useCacheSnapshot, type CacheReason, type CacheSnapshotEntry } from 'typed-router';
+import { useCacheSnapshot, type CacheReason, type CacheSnapshotEntry } from 'clear-safe-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { Badge, Card, Group, Loader, Text, ThemeIcon, Tooltip } from '@mantine/core';
 import { IconArrowRight, IconBolt, IconRefresh, IconReload } from '@tabler/icons-react';

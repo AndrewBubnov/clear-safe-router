@@ -5,8 +5,8 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: [
-      { find: /^typed-router$/, replacement: '/src/index.tsx' },
-      { find: /^typed-router\/(.+)$/, replacement: '/src/$1' },
+      { find: /^clear-safe-router$/, replacement: '/src/index.tsx' },
+      { find: /^clear-safe-router\/(.+)$/, replacement: '/src/$1' },
       { find: /^@\/(.+)$/, replacement: '/playground/$1' },
     ],
   },
