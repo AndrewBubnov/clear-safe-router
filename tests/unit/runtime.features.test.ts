@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createFileRoute, routerRuntime, useBlocker } from './index';
+import { createFileRoute, routerRuntime, useBlocker } from '../../src/index';
 import { act, cleanup, renderHook } from '@testing-library/react';
-import type { RouteNode } from './types';
-import { resetRouterState, setRouterConfig, useRouterSnapshot } from './runtime';
+import type { RouteNode } from '../../src/types';
+import { resetRouterState, setRouterConfig, useRouterSnapshot } from '../../src/runtime';
 
 const Root = createFileRoute('__root__')({});
 const makeRoot = (children: RouteNode[]) => ({ ...Root, path: '/', children }) as unknown as RouteNode;

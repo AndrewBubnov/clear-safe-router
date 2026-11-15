@@ -1,8 +1,8 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { RouteNode } from './types';
-import { Router, Link, Outlet, createFileRoute, routerRuntime } from './index';
-import { resetRouterState } from './runtime';
+import type { RouteNode } from '../../src/types';
+import { Router, Link, Outlet, createFileRoute, routerRuntime } from '../../src/index';
+import { resetRouterState } from '../../src/runtime';
 
 const HomeRoute = createFileRoute('/')({ component: () => <><h1>Home</h1><Link to="/playground/cache/product/$productId" params={{ productId: '7' }}>Product</Link></> });
 const MemberRoute = createFileRoute('/playground/cache/product/$productId')({

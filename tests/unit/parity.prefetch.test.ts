@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { lazy } from './index';
-import { navigate, prefetch, resetRouterState, setRouterConfig } from './runtime/actions';
-import { cache } from './runtime/state';
-import type { FileRouteOptions, RouteNode } from './types';
+import { lazy } from '../../src/index';
+import { navigate, prefetch, resetRouterState, setRouterConfig } from '../../src/runtime/actions';
+import { cache } from '../../src/runtime/state';
+import type { FileRouteOptions, RouteNode } from '../../src/types';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({
   id,

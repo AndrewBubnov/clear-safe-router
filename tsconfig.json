@@ -35,6 +35,8 @@
   "include": [
     "src",
     "playground",
+    "tests/unit",
+    "tests/integration",
     "vite.config.ts"
   ],
   "references": [

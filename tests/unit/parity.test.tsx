@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
-import type { RouteNode } from './types';
-import { Link, Outlet, Router, useCacheSnapshot, useLocation, useRouteStatus, routerRuntime, syncCacheSnapshot } from './index';
-import { resetRouterState, restoreScrollNow, setRouterConfig, useRouteData } from './runtime';
+import type { RouteNode } from '../../src/types';
+import { Link, Outlet, Router, useCacheSnapshot, useLocation, useRouteStatus, routerRuntime, syncCacheSnapshot } from '../../src/index';
+import { resetRouterState, restoreScrollNow, setRouterConfig, useRouteData } from '../../src/runtime';
 
 // Synthetic runtime tree routes ('/about', '/search') intentionally don't exist in the
 // generated RouteId union — bypass Link's compile-time checking to keep runtime parity.

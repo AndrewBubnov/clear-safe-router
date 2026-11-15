@@ -1,8 +1,8 @@
 ﻿import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { FileRouteOptions, RouteNode } from './types';
-import { Outlet, Router, routerRuntime, useCacheSnapshot, useRouteStatus } from './index';
-import { resetRouterState, setRouterConfig, useRouteData } from './runtime';
+import type { FileRouteOptions, RouteNode } from '../../src/types';
+import { Outlet, Router, routerRuntime, useCacheSnapshot, useRouteStatus } from '../../src/index';
+import { resetRouterState, setRouterConfig, useRouteData } from '../../src/runtime';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({
   id,
