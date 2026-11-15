@@ -1,6 +1,8 @@
 import { Suspense, use } from 'react';
 import { Badge, Button, Group, Progress, RingProgress, Stack, Text, ThemeIcon } from '@mantine/core';
-import { Link, useInvalidate, useLoaderState } from 'clear-safe-router';
+import { getRoute, Link, useInvalidate } from 'clear-safe-router';
+
+const route = getRoute('/playground/deferred');
 import { getCallCount } from './api';
 import { ChartFallback } from './Skeletons';
 
@@ -49,7 +51,7 @@ const TrafficChart = ({ traffic }: { traffic: Promise<TrafficSlice[]> }) => {
 };
 
 const DeferredPage = () => {
-	const { data } = useLoaderState<DeferredDashboard>();
+	const data = route.useLoaderData<DeferredDashboard>();
 	const invalidate = useInvalidate();
 	return (
 		<div className="pg-wrap">

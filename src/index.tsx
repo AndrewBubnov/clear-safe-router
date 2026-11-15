@@ -3,7 +3,7 @@ export { createFileRoute, getRoute, Outlet, lazy } from './route';
 export { Router } from './router';
 export { Link } from './link';
 export {
-  useNavigate, useLocation, useRouteStatus, useParams, useLoaderState, useCacheSnapshot,
+  useNavigate, useLocation, useRouteStatus, useCacheSnapshot,
   useSearchParams, useRestoreScroll, useBlocker, useInvalidate, useSubmitAction,
 } from './hooks';
 export { useRouterContext, routerRuntime, syncCacheSnapshot } from './runtime';

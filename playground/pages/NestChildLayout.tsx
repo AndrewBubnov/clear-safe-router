@@ -1,9 +1,11 @@
 import { type ReactNode } from 'react';
 import { Badge, Group, Paper, Text } from '@mantine/core';
-import { useParams } from 'clear-safe-router';
+import { getRoute } from 'clear-safe-router';
+
+const route = getRoute('/playground/nest/$nestId');
 
 export const NestChildLayout = ({ children }: { children: ReactNode }) => {
-	const { nestId } = useParams();
+	const { nestId } = route.useParams();
 
 	return (
 		<div className="pg-layout-bar">

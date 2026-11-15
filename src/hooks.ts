@@ -10,8 +10,6 @@ import {
   useBlockedTargetValue,
   useBlockerStateValue,
   useCacheSnapshotValue,
-  useLoaderStateValue,
-  useMatchAtDepth,
   useRouterContext,
   useRouterSnapshot,
 } from "./runtime";
@@ -28,16 +26,6 @@ export function useRouteStatus(predicate?: (status: RouterStatus) => boolean) {
   const status = useRouterSnapshot().status;
   return predicate ? predicate(status) : status;
 }
-export const useParams = <T = Record<string, string>>() => {
-  const match = useMatchAtDepth();
-  return (match?.params ?? {}) as T;
-};
-export const useLoaderState = <T = unknown>() =>
-  useLoaderStateValue() as {
-    data: T;
-    loaderError: Error | null;
-    beforeLoadError: Error | null;
-  };
 export const useCacheSnapshot = () => useCacheSnapshotValue() as CacheSnapshot;
 export const useSearchParams = () => {
   const state = useRouterSnapshot();

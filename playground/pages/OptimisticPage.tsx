@@ -1,8 +1,10 @@
-import { Link, useRouteStatus, useLoaderState } from 'clear-safe-router';
+import { getRoute, Link, useRouteStatus } from 'clear-safe-router';
+
+const route = getRoute('/playground/optimistic');
 import { getCallCount } from './api';
 
 const OptimisticPage = () => {
-	const { data } = useLoaderState<{ value: number; generation: number }>();
+	const data = route.useLoaderData<{ value: number; generation: number }>();
 	const revalidating = useRouteStatus(status => status === 'optimistic');
 	return (
 		<div className="pg-wrap">

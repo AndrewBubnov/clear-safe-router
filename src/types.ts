@@ -62,6 +62,7 @@ export type FileRouteDefinition<Id extends RouteId = RouteId, Options extends Fi
   useSearch(): SearchParams;
   useLoaderData<T = Options extends { loader: (...args: never[]) => infer Data } ? Awaited<Data> : unknown>(): T;
   useRouteStatus(): RouteStatus;
+  useErrors(): { loaderError: Error | null; beforeLoadError: Error | null };
 };
 export type RouteApi<Id extends RouteId = RouteId> = {
   id: Id;
@@ -69,6 +70,7 @@ export type RouteApi<Id extends RouteId = RouteId> = {
   useSearch(): SearchParams;
   useLoaderData<T = unknown>(): T;
   useRouteStatus(): RouteStatus;
+  useErrors(): { loaderError: Error | null; beforeLoadError: Error | null };
 };
 export type RouteNode = Omit<FileRouteDefinition, 'options'> & { options: FileRouteOptions<any>; path: string; children: RouteNode[] };
 export type RouteMatch = { route: RouteNode; params: Record<string, string>; key: string };

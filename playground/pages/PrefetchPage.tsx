@@ -1,8 +1,10 @@
-import { Link, useLoaderState } from 'clear-safe-router';
+import { getRoute, Link } from 'clear-safe-router';
+
+const route = getRoute('/playground/prefetch');
 import { getCallCount } from './api';
 
 const PrefetchPage = () => {
-	const { data } = useLoaderState<string>();
+	const data = route.useLoaderData<string>();
 	return (
 		<div className="pg-wrap">
 			<h1>Prefetch</h1>

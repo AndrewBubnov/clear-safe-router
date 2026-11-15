@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Link, useInvalidate, useLoaderState, useRouterContext } from 'clear-safe-router';
+import { getRoute, Link, useInvalidate, useRouterContext } from 'clear-safe-router';
+
+const route = getRoute('/playground/cache/');
 import { Button, RingProgress, Stack, Text } from '@mantine/core';
 import { CACHE_STALE_TIME, getCallCount, HEAVY_GC_TIME } from './api';
 import { usePlaygroundSettings } from './usePlaygroundSettings';
@@ -223,7 +225,8 @@ const GcCountdown = () => {
 };
 
 const CachePage = () => {
-	const { data, loaderError, beforeLoadError } = useLoaderState<string>();
+	const data = route.useLoaderData<string>();
+	const { loaderError, beforeLoadError } = route.useErrors();
 	const { maxCacheSize, showCacheVisualizer } = usePlaygroundSettings();
 	const loadError = loaderError ?? beforeLoadError;
 	return (

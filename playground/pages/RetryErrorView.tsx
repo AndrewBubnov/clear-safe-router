@@ -1,8 +1,10 @@
 import { Alert, Button } from '@mantine/core';
-import { Link, useLoaderState } from 'clear-safe-router';
+import { getRoute, Link } from 'clear-safe-router';
+
+const route = getRoute('/playground/retry-raw');
 
 const RetryErrorView = () => {
-	const { loaderError } = useLoaderState();
+	const { loaderError } = route.useErrors();
 	return (
 		<div className="pg-wrap">
 			<h1>Retry</h1>

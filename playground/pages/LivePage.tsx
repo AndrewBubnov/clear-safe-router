@@ -1,9 +1,11 @@
-import { Link, useLoaderState } from 'clear-safe-router';
+import { getRoute, Link } from 'clear-safe-router';
+
+const route = getRoute('/playground/live');
 
 type QuotesData = { tick: number; quotes: { symbol: string; price: number }[] };
 
 const LivePage = () => {
-	const { data } = useLoaderState<QuotesData>();
+	const data = route.useLoaderData<QuotesData>();
 	return (
 		<div className="pg-wrap">
 			<h1>Polling</h1>

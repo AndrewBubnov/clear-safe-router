@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Alert, Button } from '@mantine/core';
-import { Link, useInvalidate, useLoaderState, useSubmitAction } from 'clear-safe-router';
+import { getRoute, Link, useInvalidate, useSubmitAction } from 'clear-safe-router';
+
+const route = getRoute('/playground/actions');
 import { getCallCount, type Note } from './api';
 
 const AddNoteForm = () => {
@@ -51,7 +53,7 @@ const AddNoteForm = () => {
 };
 
 const ActionsPage = () => {
-	const { data: notes } = useLoaderState<Note[]>();
+	const notes = route.useLoaderData<Note[]>();
 	return (
 		<div className="pg-wrap">
 			<h1>Actions + invalidation</h1>

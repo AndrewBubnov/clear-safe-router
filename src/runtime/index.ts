@@ -23,11 +23,9 @@ import {
   useRouterContext,
   mergeContext,
   useCacheSnapshotValue,
-  useLoaderStateValue,
   useBlockerStateValue,
   useBlockedTargetValue,
   useLinkState,
-  useMatchAtDepth,
 } from "./hooks";
 
 export const routerRuntime: RouterRuntime = { navigate, invalidate, prefetch };
@@ -63,8 +61,6 @@ export {
   useLinkState,
   mergeContext,
   useCacheSnapshotValue,
-  useLoaderStateValue,
   useBlockerStateValue,
   useBlockedTargetValue,
-  useMatchAtDepth,
 };

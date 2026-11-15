@@ -1,11 +1,11 @@
-import { getRoute, Link, useLoaderState } from 'clear-safe-router';
+import { getRoute, Link } from 'clear-safe-router';
 import { getCallCount } from './api';
 
 const productRoute = getRoute('/playground/cache/product/$productId');
 
 const ProductPage = () => {
 	const { productId } = productRoute.useParams();
-	const { data } = useLoaderState<{ id: string; description: string; loads: number }>();
+	const data = productRoute.useLoaderData<{ id: string; description: string; loads: number }>();
 	return (
 		<div className="pg-wrap">
 			<h1>Product {data.id}</h1>

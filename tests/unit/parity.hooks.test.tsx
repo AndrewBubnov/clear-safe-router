@@ -3,14 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement, ReactNode } from 'react';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 import {
+  getRoute,
   Link,
   Outlet,
   Router,
   useInvalidate,
-  useLoaderState,
   useLocation,
   useNavigate,
-  useParams,
   useRouteStatus,
   useRouterContext,
   useSearchParams,
@@ -155,8 +154,12 @@ describe('Link parity additions (original Link.test.tsx)', () => {
   });
 });
 
+// The parity trees use route IDs that are not in the playground route map,
+// so the id side of getRoute is widened for these probes.
+const hookRoute = (id: string) => getRoute(id as never) as unknown as ReturnType<typeof getRoute<'/playground/live'>>;
+
 const ParamsDisplay = () => {
-  const params = useParams();
+  const params = hookRoute('/user/$id').useParams();
   return <span data-testid="params">{JSON.stringify(params)}</span>;
 };
 const HookProbe = ({ hook }: { hook: () => unknown }) => (
@@ -175,12 +178,12 @@ const renderHookAt = async (hook: () => unknown, path = '/') => {
 
 describe('hooks parity (original Link.test.tsx)', () => {
   it('useParams returns an empty object on the root path', async () => {
-    await renderHookAt(() => useParams());
+    await renderHookAt(() => hookRoute('/user/$id').useParams());
     expect(screen.getByTestId('hook-value').textContent).toBe('{}');
   });
 
   it('useParams returns route params', async () => {
-    await renderHookAt(() => useParams<{ id: string }>(), '/user/42');
+    await renderHookAt(() => hookRoute('/user/$id').useParams(), '/user/42');
     expect(screen.getByTestId('hook-value').textContent).toBe('{"id":"42"}');
   });
 
@@ -198,7 +201,7 @@ describe('hooks parity (original Link.test.tsx)', () => {
   });
 
   it('useLoaderState returns loader data after loading', async () => {
-    await renderHookAt(() => useLoaderState<string>().data);
+    await renderHookAt(() => hookRoute('/').useLoaderData<string>());
     expect(screen.getByTestId('hook-value').textContent).toBe('"home data"');
   });
 
@@ -238,7 +241,7 @@ describe('hooks parity (original Link.test.tsx)', () => {
     const loader = vi.fn().mockResolvedValue('cached data');
     const SearchPage = () => {
       const { getSearchParams, setSearchParams } = useSearchParams();
-      const { data } = useLoaderState<string>();
+      const data = hookRoute('/test').useLoaderData<string>();
       return (
         <div>
           <span data-testid="loader-data">{String(data)}</span>
@@ -267,7 +270,7 @@ describe('hooks parity (original Link.test.tsx)', () => {
     const SearchPage = () => {
       const { setSearchParams } = useSearchParams();
       const invalidate = useInvalidate();
-      const { data } = useLoaderState<string>();
+      const data = hookRoute('/test').useLoaderData<string>();
       return (
         <div>
           <span data-testid="loader-data">{String(data)}</span>

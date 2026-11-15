@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Alert, Button } from '@mantine/core';
-import { Link, useInvalidate, useLoaderState } from 'clear-safe-router';
+import { getRoute, Link, useInvalidate } from 'clear-safe-router';
+
+const route = getRoute('/playground/retry');
 
 const RetryErrorPage = () => {
-	const { loaderError } = useLoaderState();
+	const { loaderError } = route.useErrors();
 	const invalidate = useInvalidate();
 	const [isRetrying, setIsRetrying] = useState(false);
 

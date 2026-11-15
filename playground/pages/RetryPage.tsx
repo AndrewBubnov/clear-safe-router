@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, useLoaderState, useRouterContext } from 'clear-safe-router';
+import { getRoute, Link, useRouterContext } from 'clear-safe-router';
+
+const route = getRoute('/playground/retry');
 
 type Badge = { id: number; cached: boolean } | null;
 
 const RetryPage = () => {
-	const { data } = useLoaderState<{ value: string; attempt: number; fetchedAt: number }>();
+	const data = route.useLoaderData<{ value: string; attempt: number; fetchedAt: number }>();
 	const { context, setContext } = useRouterContext();
 	const [badge, setBadge] = useState<Badge>(null);
 

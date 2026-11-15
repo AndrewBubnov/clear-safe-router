@@ -11,6 +11,10 @@ export const createFileRoute = <const Id extends RouteId>(id: Id) => <const Opti
   useSearch: () => useRouteData(id).search,
   useLoaderData: <T = LoaderData<Options>>() => useRouteData(id).data as T,
   useRouteStatus: () => useRouteData(id).status,
+  useErrors: () => {
+    const { loaderError, beforeLoadError } = useRouteData(id);
+    return { loaderError, beforeLoadError };
+  },
 });
 
 export const getRoute = <const Id extends RouteId>(id: Id): RouteApi<Id> => ({
@@ -19,4 +23,8 @@ export const getRoute = <const Id extends RouteId>(id: Id): RouteApi<Id> => ({
   useSearch: () => useRouteData(id).search,
   useLoaderData: <T = unknown>() => useRouteData(id).data as T,
   useRouteStatus: () => useRouteData(id).status,
+  useErrors: () => {
+    const { loaderError, beforeLoadError } = useRouteData(id);
+    return { loaderError, beforeLoadError };
+  },
 });

@@ -272,6 +272,7 @@ Route.useParams();       // { productId: string } — typed
 Route.useSearch();       // Record<string, string>
 Route.useLoaderData();   // loader return type — inferred, no generics needed
 Route.useRouteStatus();  // 'idle' | 'pending' | 'active' | 'optimistic' | 'error'
+Route.useErrors();       // { loaderError, beforeLoadError } — this route's failures
 ```
 
 For imperative access anywhere (even outside the router), `getRoute` returns the same typed API:
@@ -626,23 +627,15 @@ navigate(-1);                                                         // back
 
 The typed form checks route existence and params exactly like `<Link to>`. Navigation state is read via `useLocation()`.
 
-### `useParams()`
+### `Route.useErrors()`
 
-Returns the params of **the route whose component calls the hook** — inside the rendered route tree every level sees exactly its own params, never a child's. Called outside the rendered route tree (portals, standalone hooks), it falls back to the leaf match. Untyped; for typed params prefer the route's own hook:
-
-```tsx
-const { productId } = Route.useParams(); // typed to this route
-```
-
-### `useLoaderState()`
-
-Returns the calling route level's data and errors — inside the route tree the hook is depth-aware (a layout or parent page reads its own loader data even when a child URL is active); outside the tree it falls back to the leaf route:
+Every route's API exposes its own loader failures — typed per route, no depth guessing:
 
 ```tsx
-const { data, loaderError, beforeLoadError } = useLoaderState();
+const { loaderError, beforeLoadError } = Route.useErrors();
 ```
 
-Prefer `Route.useLoaderData()` — it is typed per route and reads *that route's* data explicitly by route ID.
+The same is available imperatively via `getRoute(id).useErrors()`. There is deliberately no global `useParams()`/`useLoaderState()`: inside the route tree every component reads its own level through `Route.*`, which is always typed and always the route you meant.
 
 ### `useLocation()`
 
@@ -674,7 +667,7 @@ const status = useRouteStatus();                                          // 'id
 const isLoading = useRouteStatus(s => s === 'pending' || s === 'optimistic');
 ```
 
-Useful for global loading indicators.
+The **global** navigation status — independent of any route, usable outside the tree (global loading indicators in a shell/navbar). Inside a route component prefer `Route.useRouteStatus()` for that route's id-bound status. Untyped by design: status values are a fixed enum, not route-dependent data.
 
 ### `useRouterContext()`
 

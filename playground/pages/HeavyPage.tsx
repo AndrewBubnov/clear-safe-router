@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
-import { Link, useLoaderState, useRouterContext } from 'clear-safe-router';
+import { getRoute, Link, useRouterContext } from 'clear-safe-router';
+
+const route = getRoute('/playground/cache/heavy');
 import { HEAVY_GC_TIME } from './api';
 
 const HeavyPage = () => {
-	const { data } = useLoaderState<string>();
+	const data = route.useLoaderData<string>();
 	const { setContext } = useRouterContext();
 
 	// Countdown starts when this route is left — same moment the router's gc timer starts.

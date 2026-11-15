@@ -1,23 +1,10 @@
-import { useSyncExternalStore, useContext } from 'react';
+import { useSyncExternalStore } from 'react';
 import { blockerStateStore, blockedTargetStore, cacheSnapshotStore, contextStore, dataStore, loaderErrors, beforeLoadErrors, routeKey, snapshot, listeners } from './state';
-import { MatchIndex } from '../route/context';
-import type { LoaderState, RouteMatch } from '../types';
 
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); };
 const getSnapshot = () => snapshot();
 export const useRouterSnapshot = () => useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-/**
- * Resolves the match the calling component belongs to. Inside the rendered route
- * tree `MatchIndex` carries the depth (see `RouteOutlet`), so the hook resolves
- * to that exact level's match — never to a deeper child's. Outside the route tree
- * (portals, standalone hooks) it falls back to the leaf match.
- */
-export const useMatchAtDepth = (): RouteMatch | undefined => {
-  const state = useRouterSnapshot();
-  const index = useContext(MatchIndex);
-  return index === null ? state.matches.at(-1) : state.matches[index];
-};
 export const useRouteData = (id: string) => {
   const state = useRouterSnapshot();
   const match = state.matches.find(item => item.route.id === id);
@@ -25,7 +12,15 @@ export const useRouteData = (id: string) => {
   // Selector subscription: re-renders only when THIS route's data value changes,
   // so polling ticks on other routes/keys stay invisible here.
   const data = useSyncExternalStore(dataStore.subscribe, () => (key ? dataStore.getState().get(key) : undefined), () => (key ? dataStore.getState().get(key) : undefined));
-  return { params: match?.params ?? {}, search: Object.fromEntries(new URLSearchParams(state.location.search)), data, status: state.status, error: state.errors.get(id) };
+  return {
+    params: match?.params ?? {},
+    search: Object.fromEntries(new URLSearchParams(state.location.search)),
+    data,
+    status: state.status,
+    error: state.errors.get(id),
+    loaderError: match ? loaderErrors.get(id) ?? null : null,
+    beforeLoadError: match ? beforeLoadErrors.get(id) ?? null : null,
+  };
 };
 /**
  * Link subscriptions are selector-based: the snapshot is reduced to its
@@ -56,12 +51,5 @@ export const useRouterContext = () => {
 };
 export const mergeContext = (value: Record<string, unknown>) => contextStore.setState(previous => ({ ...previous, ...value }));
 export const useCacheSnapshotValue = () => useSyncExternalStore(cacheSnapshotStore.subscribe, cacheSnapshotStore.getState, cacheSnapshotStore.getState);
-export const useLoaderStateValue = (): LoaderState => {
-  const state = useRouterSnapshot();
-  const match = useMatchAtDepth();
-  const key = match ? routeKey(match.route, state.location) : '';
-  const data = useSyncExternalStore(dataStore.subscribe, () => (key ? dataStore.getState().get(key) : undefined), () => (key ? dataStore.getState().get(key) : undefined));
-  return { data, loaderError: match ? loaderErrors.get(match.route.id) ?? null : null, beforeLoadError: match ? beforeLoadErrors.get(match.route.id) ?? null : null };
-};
 export const useBlockerStateValue = () => useSyncExternalStore(blockerStateStore.subscribe, blockerStateStore.getState, blockerStateStore.getState);
 export const useBlockedTargetValue = () => useSyncExternalStore(blockedTargetStore.subscribe, blockedTargetStore.getState, blockedTargetStore.getState);
