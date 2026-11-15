@@ -20,7 +20,12 @@ export const typedRouter = (options: TypedRouterPluginOptions = {}): Plugin => {
     try {
       execFileSync(process.execPath, [path.join(packageRoot, 'scripts/generate-routes.mjs')], {
         cwd: packageRoot,
-        env: { ...process.env, TYPED_ROUTER_ROOT: root },
+        env: {
+          ...process.env,
+          TYPED_ROUTER_ROOT: root,
+          TYPED_ROUTER_ROUTES: path.relative(root, routeDir),
+          TYPED_ROUTER_OUTPUT: path.relative(root, generatedFile),
+        },
         stdio: 'pipe',
       });
       return true;

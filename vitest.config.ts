@@ -3,5 +3,15 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  test: { environment: 'jsdom', include: ['src/**/*.test.ts', 'src/**/*.test.tsx'] },
+  resolve: {
+    alias: [
+      { find: /^typed-router$/, replacement: '/src/index.tsx' },
+      { find: /^typed-router\/(.+)$/, replacement: '/src/$1' },
+      { find: /^@\/(.+)$/, replacement: '/playground/$1' },
+    ],
+  },
+  test: {
+    environment: 'jsdom',
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'playground/**/*.test.tsx'],
+  },
 });

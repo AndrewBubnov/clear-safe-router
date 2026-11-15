@@ -1,6 +1,6 @@
 import { getRoute, Link, useNavigate } from '../../src';
-import { Route as CatchAllRoute } from '../../src/routes/$';
-import { Route as ProductRoute } from '../../src/routes/playground/cache/product/$productId';
+import { Route as CatchAllRoute } from '../../playground/routes/$';
+import { Route as ProductRoute } from '../../playground/routes/playground/cache/product/$productId';
 
 const validStatic = <Link to="/playground/settings">Settings</Link>;
 const validDynamic = <Link to="/playground/cache/product/$productId" params={{ productId: '42' }} />;

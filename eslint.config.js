@@ -1,5 +1,5 @@
 export default [
-  { ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'playwright-report/**', 'test-results/**', 'src/routeTree.gen.ts', '.research/**'] },
+  { ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'playwright-report/**', 'test-results/**', 'playground/routeTree.gen.ts', '.research/**'] },
   {
     files: ['**/*.{js,mjs}'],
     rules: {

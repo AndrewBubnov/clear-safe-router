@@ -25,7 +25,7 @@
     "test:run": "npm test",
     "test:coverage": "npm run router:generate && vitest run --coverage",
     "test:e2e": "playwright test",
-    "router:generate": "node scripts/generate-routes.mjs",
+    "router:generate": "node scripts/generate-routes.mjs --routes playground/routes --out playground/routeTree.gen.ts",
     "generate": "npm run router:generate",
     "typecheck": "npm run router:generate && tsc -b --force && tsc --noEmit -p tests/types/tsconfig.json"
   },

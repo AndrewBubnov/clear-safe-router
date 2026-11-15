@@ -1,13 +1,1 @@
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "jsx": "react-jsx",
-    "strict": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "types": ["vite/client"]
-  },
-  "include": ["./routes.test.tsx", "../../src"]
-}
+{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","jsx":"react-jsx","strict":true,"skipLibCheck":true,"noEmit":true,"types":["vite/client"],"baseUrl":"../..","paths":{"typed-router":["./src/index.tsx"],"typed-router/*":["./src/*"],"@/*":["./playground/*"]}},"include":["./routes.test.tsx","../../src","../../playground"]}

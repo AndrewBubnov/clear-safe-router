@@ -10,5 +10,5 @@
     "rootDir": "./src",
     "tsBuildInfoFile": "./types/.tsbuildinfo"
   },
-  "include": ["src/index.tsx", "src/route-api.tsx", "src/types.ts", "src/runtime.ts", "src/routeTree.gen.ts", "src/vite-plugin/index.ts"]
+  "include": ["src/index.tsx", "src/types.ts", "src/runtime.ts", "src/route-api.tsx", "src/vite-plugin/index.ts"]
 }

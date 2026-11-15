@@ -8,7 +8,7 @@ Built on the core runtime from [clear-react-router](https://github.com/AndrewBub
 
 ## Features
 
-- **File-based routing** — Routes defined by files in `src/routes/`
+- **File-based routing** — Routes defined by files in your app (default `src/routes/`, configurable via the Vite plugin)
 - **Compile-time type safety** — Typed `Link`, `navigate`, `useParams` with route existence and param checking
 - **Single router** — One global router owns browser URL/history
 - **Provider-free** — No context providers needed, all state in stores
@@ -26,7 +26,7 @@ Built on the core runtime from [clear-react-router](https://github.com/AndrewBub
 ## File Conventions
 
 ```
-src/routes/
+routes/
   __root.tsx              # Required root route (id __root__)
   index.tsx               # "/"
   about.tsx               # "/about"
@@ -55,7 +55,7 @@ Folders with children require a `route.tsx` parent — unless a sibling route fi
 ### Route Module Exports
 
 ```tsx
-// src/routes/products/$productId.tsx
+// routes/products/$productId.tsx
 import { createFileRoute } from 'typed-router';
 
 export const Route = createFileRoute('/products/$productId')({
@@ -102,7 +102,7 @@ createRoot(...).render(<Router routes={routeTree} />);
 ```
 
 ```tsx
-// src/routes/index.tsx
+// routes/index.tsx
 import { createFileRoute } from 'typed-router';
 
 // The generator validates this exact export and ID against the file path
@@ -310,7 +310,7 @@ All hooks work **outside `<Router>`** — state lives in global stores.
 The generator produces a single file (do not edit manually):
 
 ```
-src/routeTree.gen.ts     # RouteId union (types) + routeTree (runtime tree)
+routeTree.gen.ts        # routeTree (runtime tree) + augmentation of TypedRouterRouteMap for typed APIs
 ```
 
 ## License

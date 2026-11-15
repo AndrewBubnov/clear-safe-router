@@ -3,14 +3,21 @@ import react from '@vitejs/plugin-react';
 import { typedRouter } from './src/vite-plugin';
 
 export default defineConfig({
-  plugins: [react(), typedRouter()],
+  plugins: [
+    react(),
+    typedRouter({
+      routesDirectory: 'playground/routes',
+      generatedFile: 'playground/routeTree.gen.ts',
+    }),
+  ],
   server: {
     open: '/playground/',
   },
   resolve: {
-    alias: {
-      'typed-router': '/src/index.ts',
-      'typed-router/*': '/src/*',
-    },
+    alias: [
+      { find: /^typed-router$/, replacement: '/src/index.tsx' },
+      { find: /^typed-router\/(.+)$/, replacement: '/src/$1' },
+      { find: /^@\/(.+)$/, replacement: '/playground/$1' },
+    ],
   },
 });

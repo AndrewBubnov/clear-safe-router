@@ -22,23 +22,24 @@
     "baseUrl": ".",
     "paths": {
       "typed-router": [
-        "./src/index.ts"
+        "./src/index.tsx"
       ],
       "typed-router/*": [
         "./src/*"
+      ],
+      "@/*": [
+        "./playground/*"
       ]
     }
   },
   "include": [
     "src",
+    "playground",
     "vite.config.ts"
   ],
   "references": [
     {
       "path": "./tsconfig.node.json"
     }
-  ],
-  "exclude": [
-    "playground"
   ]
 }

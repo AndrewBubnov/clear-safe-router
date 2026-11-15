@@ -1,10 +1,17 @@
 import type { AnchorHTMLAttributes, ComponentType, CSSProperties, ReactElement, ReactNode, Ref } from 'react';
 import { LAZY_MARKER } from './constants';
-import type { RouteId as GeneratedRouteId } from './routeTree.gen';
+
+/**
+ * App-owned registry of route IDs. The router library never lists routes itself:
+ * the app's generated route tree augments this interface (via `declare module 'typed-router'`),
+ * and every typed API (Link `to`, `useParams`, `useLoaderData`, ...) derives its
+ * literals from `keyof TypedRouterRouteMap`.
+ */
+export interface TypedRouterRouteMap {}
 
 export type LazyComponent = { readonly [LAZY_MARKER]: true; importFn: () => Promise<{ default: ComponentType }> };
 
-export type RouteId = GeneratedRouteId;
+export type RouteId = keyof TypedRouterRouteMap & string;
 export type BlockerState = 'blocked' | 'unblocked' | 'charged';
 export type SearchParams = Record<string, string>;
 export type RouteStatus = 'idle' | 'pending' | 'active' | 'optimistic' | 'error';
