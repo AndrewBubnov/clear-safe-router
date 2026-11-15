@@ -58,7 +58,7 @@ export default defineConfig({
 });
 ```
 
-The plugin generates the route tree on dev-server start and on every build, watches the routes directory, and full-reloads the page when routes are added or removed. Options:
+The plugin generates the route tree on dev-server start and on every build, watches the routes directory, and full-reloads the page when routes are added or removed. Editing a route file's code regenerates silently — if the tree is unchanged, no full reload happens and Vite's normal HMR applies. Options:
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -205,7 +205,7 @@ import { routeTree } from './routeTree.gen';
 | `maxCacheSize` | `number` | `100` | Maximum cached loader entries; the least recently used entry is evicted when the limit is reached (the active route's entry is never evicted) |
 | `isAnimated` | `boolean` | `false` | Enable page transitions via the native View Transitions API |
 | `animationDuration` | `number` | browser default | Transition duration in ms |
-| `context` | `Record<string, unknown>` | `{}` | Initial router context |
+| `context` | `Record<string, unknown>` | `{}` | Initial router context. Passing a new object after mount merges it into the existing context |
 | `defaultStaleTime` | `number` | `0` | Default time before cached loader data is considered stale |
 | `defaultRetry` | `number \| { count, delay }` | `undefined` | Default revalidation retry policy |
 | `defaultPrefetch` | `'hover' \| 'render' \| 'viewport' \| 'none' \| 'auto'` | `'hover'` | Default prefetch strategy for `Link`s. `'auto'` resolves at hover-time: `hover` on desktop, `viewport` on mobile |
@@ -281,7 +281,7 @@ import { getRoute } from 'clear-safe-router';
 
 const productRoute = getRoute('/products/$productId');
 productRoute.useParams().productId; // typed: string
-productRoute.useLoaderData();       // typed from the route's loader
+productRoute.useLoaderData();       // generic — pass the type explicitly, or prefer Route.useLoaderData() which infers it from the loader
 ```
 
 ### Nested routes & layouts
@@ -475,7 +475,7 @@ Route-level `retry` overrides `defaultRetry` on the `<Router>`. Retry is applied
 
 ## Redirects (`beforeLoad`)
 
-`beforeLoad` runs for every matched route on the chain, parent first — so a guard declared on a section route covers all URLs under it. `redirect` aborts the rest of the chain (including all loaders) and loads the target location instead (replacing the history entry):
+`beforeLoad` runs for every matched route on the chain, parent first — so a guard declared on a section route covers all URLs under it. `redirect` aborts the rest of the hook body and the rest of the chain (including all loaders) and loads the target location instead (replacing the history entry). Redirect chains are capped at 10 hops; a guard that keeps redirecting (a loop) fails the navigation with an error on that route instead of hanging:
 
 ```tsx
 // src/routes/admin/route.tsx — protects every URL under /admin

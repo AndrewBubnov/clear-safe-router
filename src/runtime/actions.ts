@@ -243,8 +243,9 @@ export const prefetch = (
   });
 export const handlePopState = () => {
   if (suppressPopstateRef.current) {
-    suppressPopstateRef.current = false;
-    return;
+    const expected = suppressPopstateRef.current;
+    suppressPopstateRef.current = null;
+    if (`${window.location.pathname}${window.location.search}` === expected) return;
   }
 
   // Leaving the current page via history buttons must save its scroll too —
@@ -263,7 +264,7 @@ export const handlePopState = () => {
       blockerStateStore.setState("blocked");
       blockedTargetStore.setState(location);
     }
-    suppressPopstateRef.current = true;
+    suppressPopstateRef.current = `${snapshot().location.pathname}${snapshot().location.search}`;
     history.forward();
     emitSnapshot();
     return;
@@ -293,7 +294,7 @@ export const resetRouterState = () => {
   blockerStateStore.setState("unblocked");
   blockedTargetStore.setState(null);
   cacheSnapshotStore.setState([]);
-  suppressPopstateRef.current = false;
+  suppressPopstateRef.current = null;
   routesRef.current = undefined;
   navigationSeqRef.current++;
   committedLocationRef.current = undefined;

@@ -1,5 +1,14 @@
 import type { RouteMatch, RouteNode, RouterLocation } from '../types';
 
+const decodeSegment = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    // Malformed %-encoding in the URL — treat the segment as unmatched.
+    return null;
+  }
+};
+
 export const normalizeSearch = (search: string) => search && !search.startsWith('?') ? `?${search}` : search;
 export const splitPath = (value: string) => value.split('/').filter(Boolean);
 export const splitLocation = (value: string) => {
@@ -14,20 +23,29 @@ export const matchSegments = (pattern: string, pathname: string, mode: 'exact' |
   for (let i = 0; i < expected.length; i++) {
     const part = expected[i]!;
     const value = actual[i]!;
-    if (part.startsWith(':')) params[part.slice(1)] = decodeURIComponent(value);
-    else if (part !== value) return null;
+    if (part.startsWith(':')) {
+      const decoded = decodeSegment(value);
+      if (decoded === null) return null;
+      params[part.slice(1)] = decoded;
+    } else if (part !== value) return null;
   }
-  if (mode === 'wildcard') params._splat = actual.slice(expected.length).map(decodeURIComponent).join('/');
+  if (mode === 'wildcard') {
+    const decodedSplat = actual.slice(expected.length).map(decodeSegment);
+    if (decodedSplat.some(part => part === null)) return null;
+    params._splat = decodedSplat.join('/');
+  }
   return params;
 };
 export const flatten = (root: RouteNode) => {
   const result: { route: RouteNode; depth: number; parent?: RouteNode }[] = [];
+  const parents = new Map<RouteNode, RouteNode>();
   const visit = (route: RouteNode, depth: number, parent?: RouteNode) => {
     result.push({ route, depth, parent });
+    if (parent) parents.set(route, parent);
     route.children.forEach(child => visit(child, depth + 1, route));
   };
   visit(root, 0);
-  return result;
+  return { routes: result, parents };
 };
 const specificity = (path: string) => splitPath(path).map(segment => segment.startsWith(':') ? 0 : 1);
 const compareSpecificity = (a: number[], b: number[]) => {
@@ -41,7 +59,7 @@ const compareSpecificity = (a: number[], b: number[]) => {
 };
 export const matchRoutes = (pathname: string, location: RouterLocation, routes: RouteNode | undefined): RouteMatch[] => {
   if (!routes) return [];
-  const all = flatten(routes);
+  const { routes: all, parents } = flatten(routes);
   const candidates = all.flatMap(({ route, depth }) => {
     const wild = route.path.endsWith('*');
     const params = matchSegments(route.path, pathname, wild ? 'wildcard' : 'exact');
@@ -58,7 +76,7 @@ export const matchRoutes = (pathname: string, location: RouterLocation, routes: 
   let current: RouteNode | undefined = leaf.route;
   while (current) {
     path.unshift(current);
-    current = all.find(item => item.route === current)?.parent;
+    current = parents.get(current);
   }
   return path.map(route => {
     const params = route === leaf.route ? leaf.params : matchSegments(route.path, pathname, 'prefix') ?? {};

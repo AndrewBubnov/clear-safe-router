@@ -50,7 +50,10 @@ export const committedLocationRef: { current: RouterLocation | undefined } = { c
 export const activeControllerRef: { current: AbortController | undefined } = {
   current: undefined,
 };
-export const suppressPopstateRef: { current: boolean } = { current: false };
+/** When a popstate is reverted with history.forward() (blocker), this holds the
+ * URL the revert should land on. Only a popstate landing on exactly that URL is
+ * swallowed — a real user navigation in between is processed normally. */
+export const suppressPopstateRef: { current: string | null } = { current: null };
 
 // ——— subscriptions ———
 export const listeners = new Set<() => void>();

@@ -36,21 +36,27 @@ export const Router = ({
   enableCacheSnapshot = false,
 }: RouterProps) => {
   const state = useRouterSnapshot();
-  setRouterConfig(routes, maxCacheSize);
-  configureRouter({
-    isAnimated,
-    animationDuration,
-    defaultRetry,
-    defaultStaleTime,
-    defaultPrefetch,
-    defaultHoverPrefetchDelay,
-    defaultMinLoaderDuration,
-    defaultBeforeLoad,
-    defaultAfterLoad,
-    defaultScrollRestorationBehavior,
-    revalidateOnFocus,
-    revalidateOnReconnect,
-    enableCacheSnapshot,
+  // Router configuration is applied in effects (never during render). The config
+  // effect is declared before the navigation effect so routes are registered first.
+  useEffect(() => {
+    setRouterConfig(routes, maxCacheSize);
+  }, [routes, maxCacheSize]);
+  useEffect(() => {
+    configureRouter({
+      isAnimated,
+      animationDuration,
+      defaultRetry,
+      defaultStaleTime,
+      defaultPrefetch,
+      defaultHoverPrefetchDelay,
+      defaultMinLoaderDuration,
+      defaultBeforeLoad,
+      defaultAfterLoad,
+      defaultScrollRestorationBehavior,
+      revalidateOnFocus,
+      revalidateOnReconnect,
+      enableCacheSnapshot,
+    });
   });
   useEffect(() => {
     if (enableCacheSnapshot) syncCacheSnapshot();
@@ -71,6 +77,10 @@ export const Router = ({
       stopPolling();
     };
   }, [routes, maxCacheSize]);
+  // Re-merge when the context prop object changes after mount.
+  useEffect(() => {
+    if (context) mergeContext(context);
+  }, [context]);
   if (state.matches.length === 0) {
     if (state.status === "idle" || state.status === "pending")
       return <>{pendingFallback ?? null}</>;

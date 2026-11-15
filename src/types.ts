@@ -10,6 +10,11 @@ import { LAZY_MARKER } from './constants';
 export interface TypedRouterRouteMap {}
 
 export type LazyComponent = { readonly [LAZY_MARKER]: true; importFn: () => Promise<{ default: ComponentType }> };
+export type SetStateFn<T> = {
+  (action: T): void;
+  (action: (prevState: T) => T): void;
+};
+export type Synchronizer = <T>(subscribe: (updater: () => void) => () => void, getSnapshot: () => T, getServerSnapshot?: () => T) => T;
 
 export type RouteId = keyof TypedRouterRouteMap extends never ? string : keyof TypedRouterRouteMap & string;
 export type BlockerState = 'blocked' | 'unblocked' | 'charged';

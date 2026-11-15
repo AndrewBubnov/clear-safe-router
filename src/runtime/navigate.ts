@@ -32,6 +32,15 @@ import {
 
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 const unmatchedRouteWarnings = new Set<string>();
+const REDIRECT_LIMIT = 10;
+
+/** Thrown by the guard's `redirect()` to abort the rest of the hook body —
+ * code after `await redirect(...)` must not run. Caught by the guard chain. */
+export class RedirectSignal extends Error {
+  constructor(public target: RouterLocation) {
+    super(`Redirect to ${target.pathname}${target.search}`);
+  }
+}
 export const commit = (
   next: RouterSnapshot,
   replace = false,
@@ -71,7 +80,7 @@ export const commit = (
 };
 export const loadLocation = async (
   location: RouterLocation,
-  options: { replace?: boolean; fromPop?: boolean; prevLocation?: { pathname: string; search: string } } = {},
+  options: { replace?: boolean; fromPop?: boolean; prevLocation?: { pathname: string; search: string }; redirectDepth?: number } = {},
 ) => {
   if (!options.fromPop) captureScroll(snapshotGetter().location);
   if (blockerStateStore.getState() === "charged") {
@@ -155,8 +164,8 @@ export const loadLocation = async (
                   : update,
               );
             },
-            redirect: async (to) => {
-              redirected =
+            redirect: (to) => {
+              const target =
                 typeof to === "string"
                   ? splitLocation(to)
                   : {
@@ -164,13 +173,23 @@ export const loadLocation = async (
                       search: formatSearch(to.search),
                       state: to.state,
                     };
+              if ((options.redirectDepth ?? 0) >= REDIRECT_LIMIT)
+                throw new Error(
+                  `[clear-safe-router] Redirect chain exceeded ${REDIRECT_LIMIT} hops — possible redirect loop at "${location.pathname}"`,
+                );
+              // Throws to interrupt the hook body; the chain below catches it.
+              throw new RedirectSignal(target);
             },
           });
         } catch (error) {
-          beforeLoadErrors.set(match.route.id, toError(error));
-          errors.set(match.route.id, toError(error));
-          guardFailed = true;
-          break;
+          if (error instanceof RedirectSignal) {
+            redirected = error.target;
+          } else {
+            beforeLoadErrors.set(match.route.id, toError(error));
+            errors.set(match.route.id, toError(error));
+            guardFailed = true;
+            break;
+          }
         }
         if (redirected) {
           if (seq !== navigationSeqRef.current || controller.signal.aborted)
@@ -180,6 +199,7 @@ export const loadLocation = async (
           await loadLocation(redirected, {
             replace: true,
             prevLocation: { pathname: location.pathname, search: location.search },
+            redirectDepth: (options.redirectDepth ?? 0) + 1,
           });
           return;
         }
@@ -297,7 +317,6 @@ export const guardsAllowPrefetch = async (matches: RouteMatch[], location: Route
   for (const match of matches)
     if (match.route.options.beforeLoad) hooks.push({ hook: match.route.options.beforeLoad, params: match.params });
   for (const { hook, params } of hooks) {
-    let redirected = false;
     try {
       await hook({
         params,
@@ -311,14 +330,19 @@ export const guardsAllowPrefetch = async (matches: RouteMatch[], location: Route
               : update,
           );
         },
-        redirect: async () => {
-          redirected = true;
+        redirect: (to) => {
+          const target =
+            typeof to === "string"
+              ? splitLocation(to)
+              : { pathname: to.pathname, search: formatSearch(to.search), state: to.state };
+          throw new RedirectSignal(target);
         },
       });
     } catch {
+      // A thrown RedirectSignal (or any guard error) means real navigation
+      // would not have reached this route — do not prefetch it.
       return false;
     }
-    if (redirected) return false;
   }
   return true;
 };

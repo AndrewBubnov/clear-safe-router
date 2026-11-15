@@ -18,7 +18,7 @@ export const Outlet = () => {
  * params, e.g. /item/1 → /item/2), otherwise the restore would fire only once per mount. */
 const ScrollRestore = ({ route, restoreKey }: { route: { options: { scrollRestoration?: boolean | string[] } }; restoreKey: string }) => {
   useEffect(() => {
-    if (route.options.scrollRestoration) restoreScrollNow();
+    if (route.options.scrollRestoration) restoreScrollNow({ resetIfUnsaved: true });
   }, [route, restoreKey]);
   return null;
 };

@@ -33,26 +33,29 @@ export const captureScroll = (location: RouterLocation) => {
   }
   if (entries.length) scrollMap.set(`${location.pathname}${location.search}`, entries);
 };
-export const applyScrollRestoration = (matches: RouteMatch[], location: RouterLocation) => {
+export const applyScrollRestoration = (matches: RouteMatch[], location: RouterLocation, { resetIfUnsaved = true }: { resetIfUnsaved?: boolean } = {}) => {
   const route = scrollOptionFor(matches);
   const option = route?.options.scrollRestoration;
   if (!option) return;
   const saved = scrollMap.get(`${location.pathname}${location.search}`);
   const behavior = route?.options.scrollRestorationBehavior ?? routerConfig.defaultScrollRestorationBehavior;
-  if (saved) {
-    const windowArgs: ScrollToOptions = { behavior };
-    for (const [key, position] of saved) {
-      if (key === WINDOW_KEYS.top) windowArgs.top = position;
-      else if (key === WINDOW_KEYS.left) windowArgs.left = position;
-      else {
-        const element = document.getElementById(key);
-        if (!element) continue;
-        element.scrollTo({ [isVerticalScroll(element) ? 'top' : 'left']: position, behavior } as ScrollToOptions);
-      }
-    }
-    if (windowArgs.top !== undefined || windowArgs.left !== undefined) window.scrollTo(windowArgs);
+  if (!saved) {
+    // Automatic restores reset an unseen location to the top; the manual
+    // `restoreScrollNow()` leaves the scroll position untouched instead.
+    if (resetIfUnsaved) window.scrollTo({ left: 0, top: 0, behavior });
     return;
   }
-  window.scrollTo({ left: 0, top: 0, behavior });
+  const windowArgs: ScrollToOptions = { behavior };
+  for (const [key, position] of saved) {
+    if (key === WINDOW_KEYS.top) windowArgs.top = position;
+    else if (key === WINDOW_KEYS.left) windowArgs.left = position;
+    else {
+      const element = document.getElementById(key);
+      if (!element) continue;
+      element.scrollTo({ [isVerticalScroll(element) ? 'top' : 'left']: position, behavior } as ScrollToOptions);
+    }
+  }
+  if (windowArgs.top !== undefined || windowArgs.left !== undefined) window.scrollTo(windowArgs);
 };
-export const restoreScrollNow = () => applyScrollRestoration(snapshot().matches, snapshot().location);
+export const restoreScrollNow = ({ resetIfUnsaved = false }: { resetIfUnsaved?: boolean } = {}) =>
+  applyScrollRestoration(snapshot().matches, snapshot().location, { resetIfUnsaved });

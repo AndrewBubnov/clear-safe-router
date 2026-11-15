@@ -1,4 +1,4 @@
-import type { SetStateFn, Synchronizer } from './core-types';
+import type { SetStateFn, Synchronizer } from './types';
 
 type Listener<T> = (state: T, prevState: T) => void;
 

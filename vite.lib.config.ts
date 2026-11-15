@@ -16,7 +16,7 @@ export default defineConfig({
       fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'vite', 'node:child_process', 'node:path', 'node:url'],
+      external: ['react', 'react-dom', 'vite', 'node:child_process', 'node:fs', 'node:path', 'node:url'],
     },
   },
 });

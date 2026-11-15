@@ -1,4 +1,4 @@
-import type { LoaderState } from './core-types';
+import type { LoaderState } from './types';
 
 export const LAZY_MARKER = '__typed_router_lazy__';
 
