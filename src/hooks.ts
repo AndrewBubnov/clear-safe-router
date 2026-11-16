@@ -13,8 +13,8 @@ import {
   useRouterContext,
   useRouterSnapshot,
 } from "./runtime";
-import type { CacheSnapshot, RouteStatus as RouterStatus } from "./types";
 import { blockerStateStore, blockedTargetStore } from "./runtime/state";
+import type { CacheSnapshot, RouteStatus as RouterStatus } from "./types";
 
 export const useNavigate = () => routerRuntime.navigate;
 export const useLocation = () => useRouterSnapshot().location;
@@ -75,7 +75,9 @@ export const useBlocker = (
   // would otherwise leave unmountedRef stuck at true in development.
   useLayoutEffect(() => {
     unmountedRef.current = false;
-    return () => { unmountedRef.current = true; };
+    return () => {
+      unmountedRef.current = true;
+    };
   }, []);
   // Runs after every commit so arbitrary closure state (form dirtiness, context…)
   // stays reactive, but never inside render. The global charged state is owned by
