@@ -5,7 +5,7 @@
 
 A provider-free React SPA router with **file-based routing** and **compile-time type-safe navigation** — nested routes, typed `Link` and hooks, loaders with caching, actions, blockers, prefetching, and scroll restoration, all wired up by a small Vite plugin.
 
-Built on the core runtime from [clear-react-router](https://github.com/AndrewBubnov/clear-react-router). Clear Safe Router adds the file-based route generation and the compile-time type layer on top of it.
+Built on the core runtime from [clear-react-router](https://github.com/AndrewBubnov/clear-react-router) ([npm](https://www.npmjs.com/package/clear-react-router)). Clear Safe Router adds the file-based route generation and the compile-time type layer on top of it.
 
 ## Why Clear Safe Router?
 
