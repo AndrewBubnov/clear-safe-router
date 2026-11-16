@@ -2,8 +2,6 @@
 
 [![CI](https://github.com/AndrewBubnov/clear-safe-router/actions/workflows/ci.yml/badge.svg)](https://github.com/AndrewBubnov/clear-safe-router/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/clear-safe-router)](https://www.npmjs.com/package/clear-safe-router)
-[![npm bundle size](https://img.shields.io/bundlephobia/minzip/clear-safe-router)](https://bundlephobia.com/package/clear-safe-router)
-[![license](https://img.shields.io/npm/l/clear-safe-router)](https://github.com/AndrewBubnov/clear-safe-router/blob/master/LICENSE)
 
 A provider-free React SPA router with **file-based routing** and **compile-time type-safe navigation** — nested routes, typed `Link` and hooks, loaders with caching, actions, blockers, prefetching, and scroll restoration, all wired up by a small Vite plugin.
 
