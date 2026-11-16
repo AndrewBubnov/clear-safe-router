@@ -71,7 +71,7 @@ export const PlaygroundNav = () => {
             <IconRoute size={20} stroke={1.8} />
           </span>
           <span className="pg-brand-copy">
-            <span className="pg-brand">Clear React Router</span>
+            <span className="pg-brand">Clear Safe Router</span>
             <span className="pg-brand-tag">playground</span>
           </span>
         </a>
