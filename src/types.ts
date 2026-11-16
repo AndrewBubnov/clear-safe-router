@@ -4,7 +4,7 @@ import { LAZY_MARKER } from './constants';
 /**
  * App-owned registry of route IDs. The router library never lists routes itself:
  * the app's generated route tree augments this interface (via `declare module 'clear-safe-router'`),
- * and every typed API (Link `to`, `useParams`, `useLoaderData`, ...) derives its
+ * and every typed API (Link `to`, `Route.useParams`, `Route.useLoaderData`, ...) derives its
  * literals from `keyof TypedRouterRouteMap`.
  */
 export interface TypedRouterRouteMap {}

@@ -33,7 +33,7 @@ export const routeTree = { ...r0, path: "/", children: [{ ...r2, path: "/", chil
 
 import type {} from 'clear-safe-router';
 // The app augments the router library's route registry so the typed APIs
-// (Link `to`, useParams, useLoaderData, ...) resolve against this app's route IDs.
+// (Link `to`, Route.useParams, Route.useLoaderData, ...) resolve against this app's route IDs.
 // The value type is the route's own `Route` object, so loader data is inferred too.
 declare module 'clear-safe-router' {
   export interface TypedRouterRouteMap {

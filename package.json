@@ -22,6 +22,7 @@
   "scripts": {
     "dev": "npm run router:generate && vite",
     "build": "npm run router:generate && vite build && vite build --config vite.lib.config.ts && tsc -p tsconfig.build.json",
+    "build:playground": "npm run router:generate && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "npm run router:generate && vitest run",

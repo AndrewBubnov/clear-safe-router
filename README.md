@@ -168,7 +168,17 @@ Every typed API — `Link`'s `to`, `useNavigate`, `Route.useParams()`, `Route.us
 
 The router uses the History API (`pushState` + `popstate`) exclusively — there is no hash mode. Deep links and page refreshes therefore need an SPA fallback on static hosts: every path must serve `index.html`, otherwise refreshing e.g. `/about` returns 404.
 
-Vercel (`vercel.json`):
+The playground in this repo deploys as-is: `vercel.json` builds only the playground (`npm run build:playground`), publishes its `dist-playground/` output, and rewrites every path to `index.html`:
+
+```json
+{
+  "buildCommand": "npm run build:playground",
+  "outputDirectory": "dist-playground",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+Deploying **your own app** built on the library — a plain Vite app with the default `dist/` output — only needs the rewrites:
 
 ```json
 { "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
