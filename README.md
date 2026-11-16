@@ -15,7 +15,7 @@ Most React routers ask you to choose: central route config *or* file-based route
 - **Provider-free** — one `<Router />` in the tree, one global store. Every hook and `Link` works anywhere, including components rendered outside the router.
 - **Small, explicit API** — loaders, caching, invalidation, blockers, prefetch, actions. No RouteProvider nesting, no plugin context, no magic.
 
-> TL;DR? Clone the repo and run `npm run dev` — the built-in playground exercises every feature (nested routes, loaders with caching and a live cache visualizer, actions, blockers, prefetch, optimistic navigation, scroll restoration, retry, polling, search params, a context-based auth guard) against a fake in-browser server. Open devtools and click around.
+> TL;DR? **[Try the live playground](https://clear-safe-router.vercel.app/)** — no setup, click around.
 
 ## Features
 
