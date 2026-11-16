@@ -14,7 +14,7 @@ import {
   useRouterSnapshot,
 } from "./runtime";
 import type { CacheSnapshot, RouteStatus as RouterStatus } from "./types";
-import { blockerStateStore } from "./runtime/state";
+import { blockerStateStore, blockedTargetStore } from "./runtime/state";
 
 export const useNavigate = () => routerRuntime.navigate;
 export const useLocation = () => useRouterSnapshot().location;
@@ -71,7 +71,12 @@ export const useBlocker = (
   const armedRef = useRef<boolean | null>(null);
   const unmountedRef = useRef(false);
   // Declared before the decision effect so its layout cleanup runs first on unmount.
-  useLayoutEffect(() => () => { unmountedRef.current = true; }, []);
+  // The setup reset matters for React StrictMode, whose simulated unmount/remount
+  // would otherwise leave unmountedRef stuck at true in development.
+  useLayoutEffect(() => {
+    unmountedRef.current = false;
+    return () => { unmountedRef.current = true; };
+  }, []);
   // Runs after every commit so arbitrary closure state (form dirtiness, context…)
   // stays reactive, but never inside render. The global charged state is owned by
   // the most recently mounted hook; when that hook unmounts while charged, it
@@ -92,7 +97,13 @@ export const useBlocker = (
       blockerOwner = -1;
       if (!unmountedRef.current) return;
       armedRef.current = null;
-      if (blockerStateStore.getState() === "charged") setBlockerStatus("unblocked");
+      // Release both states: a hook that unmounts mid-block ('blocked') leaves
+      // nobody able to proceed(), so the pending target is dropped too.
+      const state = blockerStateStore.getState();
+      if (state === "charged" || state === "blocked") {
+        blockerStateStore.setState("unblocked");
+        blockedTargetStore.setState(null);
+      }
     };
   });
   const process = async () => {

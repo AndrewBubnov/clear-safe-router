@@ -44,7 +44,7 @@ export const emit = () => {
   if (routerConfig.enableCacheSnapshot) cacheSnapshotStore.setState(buildCacheSnapshot());
   listeners.forEach(listener => listener());
 };
-export const runLoader = (match: RouteMatch, location: RouterLocation, signal: AbortSignal, force = false, reason: CacheReason = 'navigation'): Promise<unknown> => {
+export const runLoader = (match: RouteMatch, location: RouterLocation, signal: AbortSignal, force = false, reason: CacheReason = 'navigation', contextOverride?: Record<string, unknown>): Promise<unknown> => {
   const loader = match.route.options.loader;
   if (!loader) return Promise.resolve(undefined);
   const key = routeKey(match.route, location);
@@ -65,7 +65,7 @@ export const runLoader = (match: RouteMatch, location: RouterLocation, signal: A
   const work = async (requestSignal: AbortSignal): Promise<unknown> => {
     attempts++;
     try {
-      const value = await loader({ params: match.params, search: Object.fromEntries(new URLSearchParams(location.search)), context: contextStore.getState(), signal: requestSignal, attempt: attempts, location });
+      const value = await loader({ params: match.params, search: Object.fromEntries(new URLSearchParams(location.search)), context: contextOverride ?? contextStore.getState(), signal: requestSignal, attempt: attempts, location });
       if (requestSignal.aborted || flights.get(key)?.token !== token) return undefined;
       const previous = cache.get(key);
       if (previous?.timer) clearTimeout(previous.timer);

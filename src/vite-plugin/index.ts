@@ -80,10 +80,10 @@ export const typedRouter = (options: TypedRouterPluginOptions = {}): Plugin => {
         const module = context.server.moduleGraph.getModuleById(generatedFile);
         if (module) return [module];
         context.server.ws.send({ type: 'full-reload' });
+        return [];
       }
-      // 'unchanged': the generated file is identical — let Vite's normal HMR
-      // handle the edited route module without a full reload.
-      return [];
+      // 'unchanged'/'error': returning an array would tell Vite "update nothing";
+      // return undefined so the default pipeline HMR-updates the edited route module.
     },
   };
 };

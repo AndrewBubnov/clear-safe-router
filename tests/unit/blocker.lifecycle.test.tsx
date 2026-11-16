@@ -2,7 +2,7 @@ import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-libr
 import { afterEach, describe, expect, it } from 'vitest';
 import { Outlet, Router, routerRuntime, useBlocker } from '../../src/index';
 import { resetRouterState, setRouterConfig } from '../../src/runtime/actions';
-import { blockerStateStore } from '../../src/runtime/state';
+import { blockerStateStore, blockedTargetStore } from '../../src/runtime/state';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({
@@ -35,6 +35,27 @@ describe('useBlocker lifecycle', () => {
     unmount();
     expect(blockerStateStore.getState()).toBe('unblocked');
     // Navigation must not be stuck after the unmount.
+    await act(async () => { await routerRuntime.navigate('/away'); });
+    expect(window.location.pathname).toBe('/away');
+  });
+
+  it('releases blocked state and pending target when the hook unmounts mid-block', async () => {
+    const tree = root([
+      node('/', '/', { component: () => <p>home</p> }),
+      node('/away', '/away', { component: () => <p>away</p> }),
+    ]);
+    renderAt('/', tree);
+    await screen.findByText('home');
+    const { unmount } = renderHook(() => useBlocker(() => true));
+    await waitFor(() => expect(blockerStateStore.getState()).toBe('charged'));
+    // A navigation attempt turns charged into blocked with a pending target.
+    await act(async () => { await routerRuntime.navigate('/away'); });
+    expect(blockerStateStore.getState()).toBe('blocked');
+    expect(blockedTargetStore.getState()).not.toBeNull();
+    unmount();
+    expect(blockerStateStore.getState()).toBe('unblocked');
+    expect(blockedTargetStore.getState()).toBeNull();
+    // Navigation is not stuck after the unmount.
     await act(async () => { await routerRuntime.navigate('/away'); });
     expect(window.location.pathname).toBe('/away');
   });

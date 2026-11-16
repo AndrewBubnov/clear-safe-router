@@ -34,36 +34,37 @@ export const routeTree = { ...r0, path: "/", children: [{ ...r2, path: "/", chil
 import type {} from 'clear-safe-router';
 // The app augments the router library's route registry so the typed APIs
 // (Link `to`, useParams, useLoaderData, ...) resolve against this app's route IDs.
+// The value type is the route's own `Route` object, so loader data is inferred too.
 declare module 'clear-safe-router' {
   export interface TypedRouterRouteMap {
-    "__root__": unknown;
-    "/$": unknown;
-    "/": unknown;
-    "/playground": unknown;
-    "/playground/actions": unknown;
-    "/playground/blocker": unknown;
-    "/playground/cache": unknown;
-    "/playground/cache/heavy": unknown;
-    "/playground/cache/": unknown;
-    "/playground/cache/product": unknown;
-    "/playground/cache/product/$productId": unknown;
-    "/playground/dashboard": unknown;
-    "/playground/deferred": unknown;
-    "/playground/guard": unknown;
-    "/playground/": unknown;
-    "/playground/live": unknown;
-    "/playground/nest": unknown;
-    "/playground/nest/$nestId": unknown;
-    "/playground/nest/$nestId/": unknown;
-    "/playground/nest/$nestId/item": unknown;
-    "/playground/nest/$nestId/item/$itemId": unknown;
-    "/playground/nest/": unknown;
-    "/playground/optimistic": unknown;
-    "/playground/prefetch": unknown;
-    "/playground/retry-raw": unknown;
-    "/playground/retry": unknown;
-    "/playground/scroll": unknown;
-    "/playground/search": unknown;
-    "/playground/settings": unknown;
+    "__root__": typeof r0;
+    "/$": typeof r1;
+    "/": typeof r2;
+    "/playground": typeof r3;
+    "/playground/actions": typeof r4;
+    "/playground/blocker": typeof r5;
+    "/playground/cache": typeof r6;
+    "/playground/cache/heavy": typeof r7;
+    "/playground/cache/": typeof r8;
+    "/playground/cache/product": typeof r9;
+    "/playground/cache/product/$productId": typeof r10;
+    "/playground/dashboard": typeof r11;
+    "/playground/deferred": typeof r12;
+    "/playground/guard": typeof r13;
+    "/playground/": typeof r14;
+    "/playground/live": typeof r15;
+    "/playground/nest": typeof r16;
+    "/playground/nest/$nestId": typeof r17;
+    "/playground/nest/$nestId/": typeof r18;
+    "/playground/nest/$nestId/item": typeof r19;
+    "/playground/nest/$nestId/item/$itemId": typeof r20;
+    "/playground/nest/": typeof r21;
+    "/playground/optimistic": typeof r22;
+    "/playground/prefetch": typeof r23;
+    "/playground/retry-raw": typeof r24;
+    "/playground/retry": typeof r25;
+    "/playground/scroll": typeof r26;
+    "/playground/search": typeof r27;
+    "/playground/settings": typeof r28;
   }
 }

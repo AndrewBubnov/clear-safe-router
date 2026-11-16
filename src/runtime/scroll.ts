@@ -5,11 +5,12 @@ import { routerConfig } from './config';
 import type { RouteMatch, RouterLocation } from '../types';
 
 /** The scroll option of a navigation: the deepest matched route that declares
- * `scrollRestoration` wins, so the option works on a layout/parent as well. */
+ * `scrollRestoration` wins (an explicit `false` declares it too and mutes the
+ * parent), so the option works on a layout/parent as well. */
 const scrollOptionFor = (matches: RouteMatch[]) => {
   for (let i = matches.length - 1; i >= 0; i--) {
     const route = matches[i]!.route;
-    if (route.options.scrollRestoration) return route;
+    if (route.options.scrollRestoration !== undefined) return route;
   }
   return undefined;
 };

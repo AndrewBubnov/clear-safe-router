@@ -62,6 +62,25 @@ describe('scroll restoration fixes', () => {
     expect(scrollTo).toHaveBeenCalled();
   });
 
+  it('an explicit scrollRestoration: false on a child mutes the parent option', async () => {
+    const tree = root([
+      node('/', '/', { component: () => <Link toRaw="/list/mute">start</Link> }),
+      node('/list', '/list', { scrollRestoration: true, component: () => <Outlet /> }, [
+        node('/list/mute', '/list/mute', { scrollRestoration: false, component: () => <p>muted</p> }),
+      ]),
+      node('/elsewhere', '/elsewhere', { component: () => <p>elsewhere</p> }),
+    ]);
+    renderAt('/', tree);
+    await screen.findByText('start');
+    await act(async () => { await navigate('/list/mute'); });
+    await screen.findByText('muted');
+    setWindowScroll(77);
+    await act(async () => { await navigate('/elsewhere'); });
+    await screen.findByText('elsewhere');
+    // The child's explicit false wins — nothing captured for the muted URL.
+    expect(scrollMap.get('/list/mute')).toBeUndefined();
+  });
+
   it('uses a layout-level scrollRestoration option, not just the leaf', async () => {
     const tree = root([
       node('/', '/', { component: () => <Link toRaw="/list/1">start</Link> }),

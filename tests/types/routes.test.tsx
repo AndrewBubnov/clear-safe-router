@@ -37,6 +37,11 @@ const apiParamsAreTyped: { nestId: string; itemId: string } = itemRouteApi.usePa
 const apiParamsTypedInline: string = itemRouteApi.useParams().nestId;
 const productRouteApi = getRoute('/playground/cache/product/$productId');
 const apiProductParam: string = productRouteApi.useParams().productId;
+// Loader data is inferred from the route's loader through the generated map.
+const apiLoaderData: { description: string; loads: number } = productRouteApi.useLoaderData();
+// @ts-expect-error api loader data is typed — a wrong field is a compile error
+const apiLoaderDataWrongField: number = productRouteApi.useLoaderData().description;
+const apiErrors: { loaderError: Error | null; beforeLoadError: Error | null } = productRouteApi.useErrors();
 const apiStaticRoute = getRoute('/playground/settings');
 // @ts-expect-error getRoute rejects unknown route IDs
 const unknownApiRoute = getRoute('/does-not-exist');
@@ -45,4 +50,4 @@ const apiWrongParam: string = itemRouteApi.useParams().bogus;
 // @ts-expect-error params shape must match the route ID
 const apiParamsWrongShape: { nestId: string; bogus: string } = itemRouteApi.useParams();
 
-void [validStatic, validDynamic, validCatchAll, validRaw, validRawWithOptions, validNavigate, validRawNavigate, validRawObjectNavigate, paramsAreTyped, catchAllParamsAreTyped, loaderDataIsTyped, loaderDataWrongField, validRoot, unknownRoute, missingParam, wrongParam, missingCatchAllParam, extraStaticParam, unknownNavigation, missingNavigateParam, apiParamsAreTyped, apiParamsTypedInline, apiProductParam, apiStaticRoute, unknownApiRoute, apiWrongParam, apiParamsWrongShape];
+void [validStatic, validDynamic, validCatchAll, validRaw, validRawWithOptions, validNavigate, validRawNavigate, validRawObjectNavigate, paramsAreTyped, catchAllParamsAreTyped, loaderDataIsTyped, loaderDataWrongField, validRoot, unknownRoute, missingParam, wrongParam, missingCatchAllParam, extraStaticParam, unknownNavigation, missingNavigateParam, apiParamsAreTyped, apiParamsTypedInline, apiProductParam, apiLoaderData, apiLoaderDataWrongField, apiErrors, apiStaticRoute, unknownApiRoute, apiWrongParam, apiParamsWrongShape];

@@ -17,6 +17,13 @@ export type SetStateFn<T> = {
 export type Synchronizer = <T>(subscribe: (updater: () => void) => () => void, getSnapshot: () => T, getServerSnapshot?: () => T) => T;
 
 export type RouteId = keyof TypedRouterRouteMap extends never ? string : keyof TypedRouterRouteMap & string;
+
+/** The map value is the route's own `Route` object (see the generated file), so
+ * route option — and therefore loader data — types flow back to the library. */
+type RouteOptionsFor<Id> = Id extends keyof TypedRouterRouteMap
+  ? TypedRouterRouteMap[Id & keyof TypedRouterRouteMap] extends { options: infer Options } ? Options : unknown
+  : unknown;
+type LoaderDataFor<Id> = RouteOptionsFor<Id> extends { loader: (...args: never[]) => infer Data } ? Awaited<Data> : unknown;
 export type BlockerState = 'blocked' | 'unblocked' | 'charged';
 export type SearchParams = Record<string, string>;
 export type RouteStatus = 'idle' | 'pending' | 'active' | 'optimistic' | 'error';
@@ -68,7 +75,7 @@ export type RouteApi<Id extends RouteId = RouteId> = {
   id: Id;
   useParams(): ParamsFor<Id>;
   useSearch(): SearchParams;
-  useLoaderData<T = unknown>(): T;
+  useLoaderData<T = LoaderDataFor<Id>>(): T;
   useRouteStatus(): RouteStatus;
   useErrors(): { loaderError: Error | null; beforeLoadError: Error | null };
 };

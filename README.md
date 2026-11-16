@@ -282,7 +282,7 @@ import { getRoute } from 'clear-safe-router';
 
 const productRoute = getRoute('/products/$productId');
 productRoute.useParams().productId; // typed: string
-productRoute.useLoaderData();       // generic — pass the type explicitly, or prefer Route.useLoaderData() which infers it from the loader
+productRoute.useLoaderData();       // typed from the route's loader — the generated map carries each route's Route object type
 ```
 
 ### Nested routes & layouts
@@ -390,7 +390,7 @@ Active matching: `'/'` matches only exactly `'/'`; any other target is active on
 | `'viewport'` | Prefetches when the link enters the viewport (IntersectionObserver, 250ms dwell) |
 | `'none'` | No prefetching |
 
-> A prefetched entry stays fresh for 30 seconds: the first navigation within that window reuses it without running the loader. After that, the route's normal `staleTime` applies. Prefetch never shortens a longer route `staleTime`. Prefetches are queued with bounded concurrency (4 parallel, 2 on mobile) and also preload the target route's lazy chunk. Prefetching runs the target's `beforeLoad` guard chain first — if a guard would redirect or fail, nothing is prefetched, so protected data never lands in the cache.
+> A prefetched entry stays fresh for 30 seconds: the first navigation within that window reuses it without running the loader. After that, the route's normal `staleTime` applies. Prefetch never shortens a longer route `staleTime`. Prefetches are queued with bounded concurrency (4 parallel, 2 on mobile) and also preload the target route's lazy chunk. Prefetching runs the target's `beforeLoad` guard chain first — if a guard would redirect or fail, nothing is prefetched, so protected data never lands in the cache. The check never touches the global context store: a guard's `setContext` (e.g. preparing a token for the loader) flows into the prefetch loaders through a local context instead.
 
 #### Styling link states with CSS
 
@@ -740,7 +740,7 @@ useEffect(() => {
 | `process()` | Confirm and complete the blocked navigation |
 | `reset()` | Cancel and stay |
 
-The callback receives `{ location, nextLocation, context }`. It is evaluated after every commit (never during render), so closure state like form dirtiness stays reactive. When a Back/Forward press is blocked, the URL change is reverted until `process()`/`reset()` is called. If the component using `useBlocker` unmounts while charged, the blocker releases automatically — navigation is never stuck.
+The callback receives `{ location, nextLocation, context }`. It is evaluated after every commit (never during render), so closure state like form dirtiness stays reactive. When a Back/Forward press is blocked, the URL change is reverted until `process()`/`reset()` is called. If the component using `useBlocker` unmounts — while charged or mid-block — the blocker releases automatically and any pending target is dropped: navigation is never stuck.
 
 ### `useRestoreScroll()`
 

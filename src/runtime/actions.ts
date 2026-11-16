@@ -195,8 +195,10 @@ const runPrefetch = async (
   if (isSameLocation(location, snapshot().location)) return;
   const matches = matchRoutes(location.pathname, location, routesRef.current);
   // Guards run before prefetch loaders: a protected route is never prefetched,
-  // so its data cannot end up cached without authorization.
-  if (!(await guardsAllowPrefetch(matches, location))) return;
+  // so its data cannot end up cached without authorization. The guard chain's
+  // LOCAL context (guard setContext → loader) feeds the loaders.
+  const guard = await guardsAllowPrefetch(matches, location);
+  if (!guard.allowed) return;
   for (const match of matches)
     await runLoader(
       match,
@@ -204,6 +206,7 @@ const runPrefetch = async (
       new AbortController().signal,
       false,
       "prefetch",
+      guard.context,
     );
   prefetchLazyChunk(matches);
 };

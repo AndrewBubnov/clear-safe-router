@@ -305,30 +305,34 @@ export const loadLocation = async (
       );
   }
 };
-/** Runs the beforeLoad guard chain (parent → leaf) for prefetch purposes only:
- * no snapshot/UI effects. Returns false when a guard redirected or threw —
- * prefetch must not cache data that a real navigation would have rejected.
+/** Runs the beforeLoad guard chain (parent → leaf) for prefetch purposes only.
+ * Returns whether real navigation would reach this route, plus a LOCAL context:
+ * guards may call setContext (e.g. preparing a token for the loader), and that
+ * value flows into the prefetch loaders — without ever touching the global
+ * context store, so a parallel real navigation is unaffected.
  * Keep the hook-argument shape in sync with the guard phase of `loadLocation`. */
-export const guardsAllowPrefetch = async (matches: RouteMatch[], location: RouterLocation) => {
-  if (matches.length === 0) return true;
+export const guardsAllowPrefetch = async (matches: RouteMatch[], location: RouterLocation): Promise<{ allowed: boolean; context: Record<string, unknown> }> => {
+  if (matches.length === 0) return { allowed: true, context: { ...contextStore.getState() } };
   const leaf = matches.at(-1)!;
   const hooks: { hook: BeforeLoadHook; params: Record<string, string> }[] = [];
   if (routerConfig.defaultBeforeLoad) hooks.push({ hook: routerConfig.defaultBeforeLoad, params: leaf.params });
   for (const match of matches)
     if (match.route.options.beforeLoad) hooks.push({ hook: match.route.options.beforeLoad, params: match.params });
+  // The whole chain (guard → loader) shares this local context; the global store
+  // is never written.
+  let localContext: Record<string, unknown> = { ...contextStore.getState() };
   for (const { hook, params } of hooks) {
     try {
       await hook({
         params,
         search: Object.fromEntries(new URLSearchParams(location.search)),
-        context: contextStore.getState(),
+        context: localContext,
         location,
         setContext: (update) => {
-          contextStore.setState(
+          localContext =
             typeof update === "function"
-              ? (update as (previous: Record<string, unknown>) => Record<string, unknown>)(contextStore.getState())
-              : update,
-          );
+              ? (update as (previous: Record<string, unknown>) => Record<string, unknown>)(localContext)
+              : update;
         },
         redirect: (to) => {
           const target =
@@ -341,10 +345,10 @@ export const guardsAllowPrefetch = async (matches: RouteMatch[], location: Route
     } catch {
       // A thrown RedirectSignal (or any guard error) means real navigation
       // would not have reached this route — do not prefetch it.
-      return false;
+      return { allowed: false, context: localContext };
     }
   }
-  return true;
+  return { allowed: true, context: localContext };
 };
 export const schedulePolling = (
   matches: RouteMatch[],
