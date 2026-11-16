@@ -11,7 +11,7 @@ export type TypedRouterPluginOptions = {
   generatedFile?: string;
 };
 
-export const typedRouter = (options: TypedRouterPluginOptions = {}): Plugin => {
+export const clearSafeRouter = (options: TypedRouterPluginOptions = {}): Plugin => {
   let root = process.cwd();
   let routeDir = path.resolve(root, options.routesDirectory ?? 'src/routes');
   let generatedFile = path.resolve(root, options.generatedFile ?? 'src/routeTree.gen.ts');

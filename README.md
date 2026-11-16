@@ -50,12 +50,12 @@ npm install clear-safe-router
 // vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { typedRouter } from 'clear-safe-router/vite';
+import { clearSafeRouter } from 'clear-safe-router/vite';
 
 export default defineConfig({
   plugins: [
     react(),
-    typedRouter(), // scans src/routes, generates src/routeTree.gen.ts
+    clearSafeRouter(), // scans src/routes, generates src/routeTree.gen.ts
   ],
 });
 ```
