@@ -3,6 +3,23 @@
   "version": "0.1.0",
   "type": "module",
   "description": "File-based React SPA router with compile-time type-safe navigation",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Andrew Bubnov",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndrewBubnov/clear-safe-router.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AndrewBubnov/clear-safe-router/issues"
+  },
+  "homepage": "https://github.com/AndrewBubnov/clear-safe-router#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/types/index.d.ts",
@@ -21,7 +38,9 @@
   ],
   "scripts": {
     "dev": "npm run router:generate && vite",
-    "build": "npm run router:generate && vite build && vite build --config vite.lib.config.ts && tsc -p tsconfig.build.json",
+    "build": "npm run router:generate && vite build && npm run build:lib",
+    "build:lib": "npm run clean:dist && vite build --config vite.lib.config.ts && tsc -p tsconfig.build.json",
+    "clean:dist": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
     "build:playground": "npm run router:generate && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -31,7 +50,8 @@
     "test:e2e": "playwright test",
     "router:generate": "node scripts/generate-routes.mjs --routes playground/routes --out playground/routeTree.gen.ts",
     "generate": "npm run router:generate",
-    "typecheck": "npm run router:generate && tsc -b --force && tsc --noEmit -p tests/types/tsconfig.json"
+    "typecheck": "npm run router:generate && tsc -b --force && tsc --noEmit -p tests/types/tsconfig.json",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build:lib"
   },
   "keywords": [
     "react",
@@ -39,7 +59,18 @@
     "routing",
     "file-based",
     "typescript",
-    "type-safe"
+    "type-safe",
+    "data-loading",
+    "navigation-blocker",
+    "scroll-restoration",
+    "search-params",
+    "lazy-loading",
+    "prefetching",
+    "view-transitions",
+    "animations",
+    "retry",
+    "polling",
+    "cache-invalidation"
   ],
   "license": "MIT",
   "dependencies": {},
