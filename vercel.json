@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build:playground",
   "outputDirectory": "dist-playground",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
