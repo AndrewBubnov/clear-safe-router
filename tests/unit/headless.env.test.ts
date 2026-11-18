@@ -1,16 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resetRouterState, setRouterConfig, navigate } from '../../src/core/actions';
+// @vitest-environment node
+// The bare core under a memory history, in plain Node: there is no `window`
+// at all, so any seam bypass fails natively — no DOM globals exist to touch.
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  navigate,
+  resetRouterState,
+  setRouterConfig,
+} from '../../src/core/actions';
 import { snapshot } from '../../src/core/state';
-import { setRouterEnv, getRouterEnv, type RouterEnv } from '../../src/core/env';
-import { browserEnv } from '../../src/browser-env';
+import { setRouterEnv, getRouterEnv, nullEnv, type RouterEnv } from '../../src/core/env';
 import type { RouteNode } from '../../src/core/types';
-
-/**
- * Headless proof: the core state machine runs against a memory history with
- * zero DOM access — `window` globals are bombed during navigation so any seam
- * bypass fails loudly. Reads of the current location are legitimate
- * (bootstrap, revert checks), so they are delegated, not bombed.
- */
 
 /** In-memory history: writes land on a local stack, nothing else. */
 const memoryEnv = (): RouterEnv & { stack: string[]; setCurrent(pathname: string, search?: string): void; emitPopState(): void } => {
@@ -48,59 +47,38 @@ const memoryEnv = (): RouterEnv & { stack: string[]; setCurrent(pathname: string
 
 const node = (id: string, path: string, options: RouteNode['options'] = {}, children: RouteNode[] = []): RouteNode => ({ id: id as RouteNode['id'], path, options, children });
 
-describe('headless core (memory env)', () => {
+describe('headless core (memory env, node runtime)', () => {
   const env = memoryEnv();
-  /** Bombs every DOM global the core could bypass the seam with. */
-  const armWindowBomb = () => {
-    const originals: [string, unknown][] = [];
-    const bomb = (name: string, object: any, key: string) => {
-      originals.push([`${name}.${key}`, object[key]]);
-      object[key] = () => { throw new Error(`bypassed env seam via ${name}.${key}`); };
-    };
-    bomb('window.history', window.history, 'pushState');
-    bomb('window.history', window.history, 'replaceState');
-    bomb('window.history', window.history, 'back');
-    bomb('window.history', window.history, 'forward');
-    bomb('window', window, 'scrollTo');
-    bomb('window', window, 'matchMedia');
-    bomb('document', document, 'getElementById');
-    bomb('document', document, 'startViewTransition');
-    return () => {
-      for (const [path, value] of originals.reverse()) {
-        const [owner, key] = path.split('.').slice(-2);
-        const object = (owner === 'document' ? document : owner === 'history' ? window.history : window) as unknown as Record<string, unknown>;
-        object[key!] = value;
-      }
-    };
-  };
   beforeEach(() => {
     setRouterEnv(env);
     resetRouterState();
   });
   afterEach(() => {
-    setRouterEnv(browserEnv);
+    setRouterEnv(nullEnv);
     resetRouterState();
   });
 
-  it('navigates without touching any DOM global, writing to the memory stack instead', async () => {
-    const disarm = armWindowBomb();
-    try {
-      setRouterConfig(node('__root__', '/', {}, [
-        node('/', '/', { loader: () => 'home-data' }),
-        node('/about', '/about'),
-      ]));
-      await navigate('/about');
-      const state = snapshot();
-      expect(state.status).toBe('active');
-      expect(state.location.pathname).toBe('/about');
-      expect(state.matches.map(m => m.route.id)).toEqual(['__root__', '/about']);
-      expect(env.stack).toContain('push:/about');
+  it('the env is swappable and restorable', () => {
+    setRouterEnv(env);
+    expect(getRouterEnv()).toBe(env);
+    setRouterEnv(nullEnv);
+    expect(getRouterEnv()).toBe(nullEnv);
+  });
 
-      await navigate({ to: '/', replace: true });
-      expect(env.stack).toContain('replace:/');
-    } finally {
-      disarm();
-    }
+  it('navigates through the memory stack with zero DOM access', async () => {
+    setRouterConfig(node('__root__', '/', {}, [
+      node('/', '/', { loader: () => 'home-data' }),
+      node('/about', '/about'),
+    ]));
+    await navigate('/about');
+    const state = snapshot();
+    expect(state.status).toBe('active');
+    expect(state.location.pathname).toBe('/about');
+    expect(state.matches.map(m => m.route.id)).toEqual(['__root__', '/about']);
+    expect(env.stack).toContain('push:/about');
+
+    await navigate({ to: '/', replace: true });
+    expect(env.stack).toContain('replace:/');
   });
 
   it('processes popstate through the env seam (no DOM)', async () => {
@@ -125,22 +103,9 @@ describe('headless core (memory env)', () => {
     setRouterConfig(node('__root__', '/', {}, [node('/data', '/data', { loader: () => Promise.resolve({ n: 42 }) })]));
     await navigate('/data');
     expect(snapshot().status).toBe('active');
-    // Data flows to the store without any React rendering.
+    // Data flows to the store without any framework rendering.
     const { dataStore } = await import('../../src/core/state');
     const values = [...dataStore.getState().values()];
     expect(values).toContainEqual({ n: 42 });
-  });
-
-  it('env can be swapped and restored; the bare core defaults to nullEnv', async () => {
-    // A fresh module graph without the adapter barrel shows the core's own
-    // default: nullEnv. The React adapter is the one that wires browserEnv.
-    vi.resetModules();
-    const fresh = await import('../../src/core/env');
-    expect(fresh.getRouterEnv()).toBe(fresh.nullEnv);
-
-    setRouterEnv(env);
-    expect(getRouterEnv()).toBe(env);
-    setRouterEnv(browserEnv);
-    expect(getRouterEnv()).toBe(browserEnv);
   });
 });

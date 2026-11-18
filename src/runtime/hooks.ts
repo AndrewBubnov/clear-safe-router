@@ -1,8 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { RouterSnapshot } from '../types';
-import { blockerStateStore, blockedTargetStore, cacheSnapshotStore, contextStore, dataStore, loaderErrors, beforeLoadErrors, routeKey, snapshot, listeners } from '../core/state';
+import { blockerStateStore, blockedTargetStore, cacheSnapshotStore, contextStore, dataStore, loaderErrors, beforeLoadErrors, routeKey, snapshot, subscribe } from '../core/state';
 
-const subscribe = (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); };
 const getSnapshot = () => snapshot();
 // The runtime object IS the adapter's snapshot (routes carry view fields and
 // hook methods); the core types it with its narrower RouteNode, so the adapter

@@ -89,14 +89,8 @@ export const loadLocation = async (
   const prevLocation = from ? { pathname: from.pathname, search: from.search } : undefined;
   const nextLocation: RouterLocation = prevLocation ? { ...location, prevLocation } : { ...location };
   const matches = matchRoutes(location.pathname, location, routesRef.current);
-  // `'auto'` resolves the dev signal if the host provides one (Vite); a
-  // non-Vite host opts in/out explicitly via `configureRouter`.
-  const devMode =
-    routerConfig.warnOnUnmatchedRoutes === true ||
-    (routerConfig.warnOnUnmatchedRoutes === "auto" &&
-      (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true);
   if (
-    devMode &&
+    routerConfig.warnOnUnmatchedRoutes &&
     matches.length === 0 &&
     !unmatchedRouteWarnings.has(location.pathname)
   ) {

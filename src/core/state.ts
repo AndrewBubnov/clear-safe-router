@@ -83,6 +83,14 @@ export const initialLocation = (): RouterLocation => {
   const { pathname, search, state } = getRouterEnv().currentLocation();
   return { pathname, search, state };
 };
+/** Stable subscription over the navigation snapshot listeners — adapters
+ * (React/Vue/Svelte) wire their reactivity primitive to this. */
+export const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
 export const setSnapshot = (next: RouterSnapshot) => {
   snapshotRef.current = next;
 };

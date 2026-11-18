@@ -62,6 +62,21 @@ setRouterEnv({
 });
 ```
 
+A ready-made browser implementation (no React involved) is available as
+`clear-safe-router/browser-env` for building your own adapter:
+
+```ts
+import { browserEnv } from 'clear-safe-router/browser-env';
+```
+
+The env is process-global: **one adapter per process**. Hosts that install
+their own `RouterEnv` before importing an adapter keep it — the React adapter
+only wires `browserEnv` while the default `nullEnv` is still in place.
+
+The core never detects dev mode by itself: unmatched-route warnings are off
+until the host turns them on — `configureRouter({ warnOnUnmatchedRoutes: true })`
+in your dev setup.
+
 The core compiles without `lib: DOM` and never touches `window`/`document` —
 every platform operation goes through the `RouterEnv` seam. The React layer is
 an adapter on top of it; the same seam is the integration point for other view

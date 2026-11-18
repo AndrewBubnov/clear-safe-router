@@ -32,6 +32,10 @@
       "import": "./dist/core.js",
       "types": "./dist/types/core/index.d.ts"
     },
+    "./browser-env": {
+      "import": "./dist/browser-env.js",
+      "types": "./dist/types/browser-env.d.ts"
+    },
     "./vite": {
       "import": "./dist/vite-plugin/index.js",
       "types": "./dist/types/vite-plugin/index.d.ts"

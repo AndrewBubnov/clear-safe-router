@@ -1,12 +1,12 @@
 /**
- * Framework-free kernel barrel: matching, caching, navigation state machine,
- * guards, polling, actions and the platform seam. Zero `react` imports —
- * a non-DOM host can drive this with `setRouterEnv`.
+ * Framework-free kernel barrel — the STABLE public surface of the
+ * `clear-safe-router/core` subpath. Curated on purpose: raw internals
+ * (cache/flights maps, refs, the listener set) stay module-internal so they
+ * can evolve without breaking adapter consumers. In-package code may use
+ * deep module paths; external code should stick to this barrel.
  */
 export * from './types';
-export * from './env';
-export { create, useGlobalState, type Store } from './create';
-export { LAZY_MARKER, STANDARD_PREFETCH_DELAY } from './constants';
+export { setRouterEnv, getRouterEnv, nullEnv, type RouterEnv, type EnvScrollElement, type EnvScrollOptions, type ScrollBehaviorName } from './env';
 export {
   routerConfig,
   configureRouter,
@@ -15,66 +15,30 @@ export {
 } from './config';
 export {
   matchRoutes,
-  matchSegments,
-  splitPath,
-  splitLocation,
-  splitUrl,
-  formatSearch,
   interpolate,
+  formatSearch,
   resolveTarget,
-  matchesPath,
-  isParamSegment,
+  splitLocation,
   isSameLocation,
-  isVerticalScroll,
-  normalizeSearch,
-  parseCacheKey,
-  sleep,
-  toError,
 } from './match';
 export {
-  routesRef,
-  snapshotRef,
-  navigationSeqRef,
-  committedLocationRef,
-  activeControllerRef,
-  suppressPopstateRef,
-  listeners,
+  snapshot,
+  routeKey,
   contextStore,
   blockerStateStore,
   blockedTargetStore,
   cacheSnapshotStore,
   dataStore,
-  cache,
-  flights,
-  loaderErrors,
-  beforeLoadErrors,
-  routeErrors,
-  scrollMap,
-  WINDOW_KEYS,
+  subscribe,
   initialLocation,
-  routeKey,
-  snapshot,
-  setSnapshot,
-  updateSnapshot,
-  type CacheEntry,
-  type Flight,
 } from './state';
 export {
-  emit,
-  isCacheFresh,
-  runLoader,
-  scheduleGc,
-  clearCacheAndFlights,
   syncCacheSnapshot,
 } from './cache';
 export {
   commit,
   loadLocation,
-  guardsAllowPrefetch,
-  schedulePolling,
   stopPolling,
-  RedirectSignal,
-  REDIRECT_LIMIT,
 } from './navigate';
 export {
   navigate,

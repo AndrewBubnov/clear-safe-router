@@ -20,10 +20,9 @@ export const routerConfig = {
   revalidateOnReconnect: false,
   enableCacheSnapshot: false,
   defaultScrollRestorationBehavior: "auto" as ScrollRestorationBehavior,
-  /** Unmatched-route dev warning. `'auto'` (default) warns only when a dev
-   * signal is detectable (e.g. Vite's `import.meta.env.DEV`); hosts without a
-   * dev signal should set `true`/`false` explicitly. */
-  warnOnUnmatchedRoutes: "auto" as "auto" | boolean,
+  /** Unmatched-route dev warning. The core never detects dev itself; the host
+   * (or the React adapter) turns this on in its own dev builds. */
+  warnOnUnmatchedRoutes: false as boolean,
   /** Adapter hook: the core reports prefetches; the view layer warms its own
    * code-split chunks (the core does not know about components). */
   onPrefetch: undefined as ((matches: RouteMatch[]) => void) | undefined,
