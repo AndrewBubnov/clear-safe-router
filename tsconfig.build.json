@@ -4,7 +4,10 @@
     "composite": false,
     "noEmit": false,
     "declaration": true,
-    "declarationMap": true,
+    // No declarationMap in the published package: the .map files are useless
+    // without the sources (which stay out of the tarball) and ~doubled the
+    // types payload. "Go to definition" resolves to the .d.ts instead.
+    "declarationMap": false,
     "emitDeclarationOnly": true,
     "declarationDir": "./dist/types",
     "rootDir": "./src",
