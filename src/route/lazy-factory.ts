@@ -1,4 +1,4 @@
-import { LAZY_MARKER } from '../constants';
+import { LAZY_MARKER } from '../core/constants';
 import type { LazyComponent } from '../types';
 
 /** Marks a route component as code-split: the chunk loads on first render and is preloaded by Link prefetch. */

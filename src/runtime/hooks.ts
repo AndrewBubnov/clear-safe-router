@@ -1,9 +1,13 @@
 import { useSyncExternalStore } from 'react';
-import { blockerStateStore, blockedTargetStore, cacheSnapshotStore, contextStore, dataStore, loaderErrors, beforeLoadErrors, routeKey, snapshot, listeners } from './state';
+import type { RouterSnapshot } from '../types';
+import { blockerStateStore, blockedTargetStore, cacheSnapshotStore, contextStore, dataStore, loaderErrors, beforeLoadErrors, routeKey, snapshot, listeners } from '../core/state';
 
 const subscribe = (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); };
 const getSnapshot = () => snapshot();
-export const useRouterSnapshot = () => useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+// The runtime object IS the adapter's snapshot (routes carry view fields and
+// hook methods); the core types it with its narrower RouteNode, so the adapter
+// narrows once here and every component reads typed matches without casts.
+export const useRouterSnapshot = (): RouterSnapshot => useSyncExternalStore(subscribe, getSnapshot, getSnapshot) as RouterSnapshot;
 
 export const useRouteData = (id: string) => {
   const state = useRouterSnapshot();

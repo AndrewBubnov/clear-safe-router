@@ -28,6 +28,10 @@
       "import": "./dist/index.js",
       "types": "./dist/types/index.d.ts"
     },
+    "./core": {
+      "import": "./dist/core.js",
+      "types": "./dist/types/core/index.d.ts"
+    },
     "./vite": {
       "import": "./dist/vite-plugin/index.js",
       "types": "./dist/types/vite-plugin/index.d.ts"

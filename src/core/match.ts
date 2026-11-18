@@ -1,4 +1,4 @@
-import type { RouteMatch, RouteNode, RouterLocation } from '../types';
+import type { RouteMatch, RouteNode, RouterLocation } from './types';
 
 const decodeSegment = (value: string) => {
   try {
@@ -110,7 +110,7 @@ export const resolveTarget = (target: { to?: string; toRaw?: string; params?: Re
 export const toError = (error: unknown) => error instanceof Error ? error : new Error(String(error));
 export const isSameLocation = (a: RouterLocation, b: RouterLocation) => a.pathname === b.pathname && a.search === b.search;
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-export const isVerticalScroll = (element: Element | null) => !!element && element.scrollHeight > element.clientHeight;
+export const isVerticalScroll = (element: { scrollHeight: number; clientHeight: number } | null) => !!element && element.scrollHeight > element.clientHeight;
 export const parseCacheKey = (key: string) => { const separator = key.indexOf('|'); return { id: key.slice(0, separator), url: key.slice(separator + 1) }; };
 export const splitUrl = (url: string) => { const index = url.indexOf('?'); return index === -1 ? { pathname: url, search: '' } : { pathname: url.slice(0, index), search: url.slice(index) }; };
 export const isParamSegment = (part: string) => part.startsWith(':') || part.startsWith('$') || /^\[[^\]]+\]$/.test(part);

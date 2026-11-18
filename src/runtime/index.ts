@@ -1,4 +1,9 @@
-import type { BlockerState, RouterRuntime } from "../types";
+/**
+ * Runtime barrel for the React adapter. The framework-free kernel lives in
+ * `../core`; everything here is the React glue (hooks) plus re-exports of the
+ * core's public surface for the top-level `index.tsx`.
+ */
+import type { BlockerState, RouterRuntime } from "../core/types";
 import {
   handlePopState,
   processBlockedTarget,
@@ -10,13 +15,13 @@ import {
   navigate,
   invalidate,
   prefetch,
-} from "./actions";
-import { restoreScrollNow } from "./scroll";
-import { stopPolling } from "./navigate";
-import { blockedTargetStore, blockerStateStore } from "./state";
-import { emit as emitSnapshot, syncCacheSnapshot } from "./cache";
-import { resolveTarget } from "./match";
-import { configureRouter, routerConfig } from "./config";
+} from "../core/actions";
+import { restoreScrollNow } from "../core/scroll";
+import { stopPolling } from "../core/navigate";
+import { blockedTargetStore, blockerStateStore } from "../core/state";
+import { emit as emitSnapshot, syncCacheSnapshot } from "../core/cache";
+import { resolveTarget } from "../core/match";
+import { configureRouter, routerConfig } from "../core/config";
 import {
   useRouteData,
   useRouterSnapshot,
@@ -27,6 +32,31 @@ import {
   useBlockedTargetValue,
   useLinkState,
 } from "./hooks";
+import { browserEnv } from "../browser-env";
+import { setRouterEnv, getRouterEnv, nullEnv } from "../core/env";
+import { LAZY_MARKER } from "../core/constants";
+import type { LazyModule } from "../core/types";
+import type { RouteMatch } from "../core/types";
+
+// The adapter wires the browser platform exactly once and only when no host
+// env is already installed: importing utilities must not clobber an env that
+// a headless host (or a test) configured before importing this barrel.
+// A DOM is required — `browserEnv` reads both `window` and `document`.
+if (
+  getRouterEnv() === nullEnv &&
+  typeof window !== "undefined" &&
+  typeof document !== "undefined"
+)
+  setRouterEnv(browserEnv);
+
+// Pure config wiring, not environment detection: the adapter prefetch hook
+// must be present before any Link/prefetch call, including tests that drive
+// `routerRuntime.prefetch` without rendering `<Router>`. Idempotent by design.
+routerConfig.onPrefetch = (matches: RouteMatch[]) => {
+  const leafComponent = (matches.at(-1)?.route.options as { component?: unknown }).component;
+  if (leafComponent && typeof leafComponent === 'object' && LAZY_MARKER in leafComponent)
+    void (leafComponent as LazyModule).importFn();
+};
 
 export const routerRuntime: RouterRuntime = { navigate, invalidate, prefetch };
 export const setBlockerStatus = (state: BlockerState) =>

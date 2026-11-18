@@ -1,5 +1,4 @@
-import { LAZY_MARKER } from '../constants';
-import type { CacheReason, CacheSnapshotEntry, LazyComponent, RouteMatch, RouterLocation } from '../types';
+import type { CacheReason, CacheSnapshotEntry, RouteMatch, RouterLocation } from './types';
 import { routerConfig } from './config';
 import { activeControllerRef, cache, cacheSnapshotStore, contextStore, flights, listeners, routeKey, snapshot, type CacheEntry, type Flight } from './state';
 
@@ -113,8 +112,4 @@ export const scheduleGc = (matches: RouteMatch[], location: RouterLocation) => {
     entry.gcExpiresAt = Date.now() + entry.gcTime;
     entry.timer = setTimeout(() => { cache.delete(key); }, entry.gcTime);
   }
-};
-export const prefetchLazyChunk = (matches: RouteMatch[]) => {
-  const leafComponent = matches.at(-1)?.route.options.component;
-  if (leafComponent && typeof leafComponent === 'object' && LAZY_MARKER in leafComponent) void (leafComponent as LazyComponent).importFn();
 };

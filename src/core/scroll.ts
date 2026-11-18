@@ -2,7 +2,8 @@ import { WINDOW_KEYS } from './state';
 import { isVerticalScroll } from './match';
 import { scrollMap, snapshot } from './state';
 import { routerConfig } from './config';
-import type { RouteMatch, RouterLocation } from '../types';
+import { getRouterEnv, type EnvScrollOptions } from './env';
+import type { RouteMatch, RouterLocation } from './types';
 
 /** The scroll option of a navigation: the deepest matched route that declares
  * `scrollRestoration` wins (an explicit `false` declares it too and mutes the
@@ -20,15 +21,16 @@ export const captureScroll = (location: RouterLocation) => {
   const option = route?.options.scrollRestoration;
   if (!option) return;
   const entries: [string, number][] = [];
+  const env = getRouterEnv();
   if (Array.isArray(option)) {
     for (const id of option) {
-      const element = document.getElementById(id);
+      const element = env.elementById(id);
       if (!element) continue;
-      entries.push([id, isVerticalScroll(element) ? element.scrollTop : element.scrollLeft]);
+      const positions = env.elementScrollPos(element);
+      entries.push([id, isVerticalScroll(element) ? positions.top : positions.left]);
     }
   } else {
-    const top = document.scrollingElement?.scrollTop ?? window.scrollY;
-    const left = document.scrollingElement?.scrollLeft ?? window.scrollX;
+    const { top, left } = env.scrollPos();
     if (top) entries.push([WINDOW_KEYS.top, top]);
     if (left) entries.push([WINDOW_KEYS.left, left]);
   }
@@ -40,23 +42,24 @@ export const applyScrollRestoration = (matches: RouteMatch[], location: RouterLo
   if (!option) return;
   const saved = scrollMap.get(`${location.pathname}${location.search}`);
   const behavior = route?.options.scrollRestorationBehavior ?? routerConfig.defaultScrollRestorationBehavior;
+  const env = getRouterEnv();
   if (!saved) {
     // Automatic restores reset an unseen location to the top; the manual
     // `restoreScrollNow()` leaves the scroll position untouched instead.
-    if (resetIfUnsaved) window.scrollTo({ left: 0, top: 0, behavior });
+    if (resetIfUnsaved) env.scrollTo({ left: 0, top: 0, behavior });
     return;
   }
-  const windowArgs: ScrollToOptions = { behavior };
+  const windowArgs: EnvScrollOptions = { behavior };
   for (const [key, position] of saved) {
     if (key === WINDOW_KEYS.top) windowArgs.top = position;
     else if (key === WINDOW_KEYS.left) windowArgs.left = position;
     else {
-      const element = document.getElementById(key);
+      const element = env.elementById(key);
       if (!element) continue;
-      element.scrollTo({ [isVerticalScroll(element) ? 'top' : 'left']: position, behavior } as ScrollToOptions);
+      env.scrollElementTo(element, { [isVerticalScroll(element) ? 'top' : 'left']: position, behavior });
     }
   }
-  if (windowArgs.top !== undefined || windowArgs.left !== undefined) window.scrollTo(windowArgs);
+  if (windowArgs.top !== undefined || windowArgs.left !== undefined) env.scrollTo(windowArgs);
 };
 export const restoreScrollNow = ({ resetIfUnsaved = false }: { resetIfUnsaved?: boolean } = {}) =>
   applyScrollRestoration(snapshot().matches, snapshot().location, { resetIfUnsaved });

@@ -1,8 +1,7 @@
 import { Suspense, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import type { RouteNode } from '../types';
 import { restoreScrollNow, useRouterSnapshot } from '../runtime';
-import { dataStore } from '../runtime/state';
-import { routeKey } from '../runtime/state';
+import { dataStore } from '../core/state';
+import { routeKey } from '../core/state';
 import { DefaultsContext, MatchIndex } from './context';
 import { resolveComponent } from './lazy';
 
@@ -50,7 +49,7 @@ export const RouteOutlet = ({ index }: { index: number }) => {
   const Layout = route.options.layout;
   const body = (
     <MatchIndex.Provider value={index}>
-      <ScrollRestore route={route as RouteNode} restoreKey={dataKey} />
+      <ScrollRestore route={route} restoreKey={dataKey} />
       {/* The layout renders inside the depth provider so hooks declared on it
           (e.g. `useParams` in a shared layout) resolve to THIS route's level. */}
       {Layout ? <Layout>{content}</Layout> : content}

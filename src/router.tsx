@@ -12,6 +12,7 @@ import {
   useRouterSnapshot,
 } from "./runtime";
 import type { RouterProps } from "./types";
+import { getRouterEnv } from "./core/env";
 
 export const Router = ({
   routes,
@@ -66,13 +67,12 @@ export const Router = ({
     const onPopState = () => {
       void handlePopState();
     };
-    window.addEventListener("popstate", onPopState);
+    const env = getRouterEnv();
+    const offPopState = env.onPopState(onPopState);
     const stopRevalidation = setupRevalidation();
-    void routerRuntime.navigate(
-      `${window.location.pathname}${window.location.search}`,
-    );
+    void routerRuntime.navigate(env.currentUrl());
     return () => {
-      window.removeEventListener("popstate", onPopState);
+      offPopState();
       stopRevalidation();
       stopPolling();
     };

@@ -1,6 +1,7 @@
-import { create } from "../create";
-import { WINDOW_TOP, WINDOW_LEFT } from "../constants";
+import { create } from "./create";
+import { WINDOW_TOP, WINDOW_LEFT } from "./constants";
 import { splitPath } from "./match";
+import { getRouterEnv } from "./env";
 import type {
   BlockerState,
   CacheReason,
@@ -9,7 +10,7 @@ import type {
   RouteNode,
   RouterLocation,
   RouterSnapshot,
-} from "../types";
+} from "./types";
 
 export type CacheEntry = {
   value: unknown;
@@ -78,11 +79,10 @@ export const routeErrors = new Map<string, Error>();
 export const scrollMap = new Map<string, [string, number][]>();
 export const WINDOW_KEYS = { top: WINDOW_TOP, left: WINDOW_LEFT };
 
-export const initialLocation = (): RouterLocation => ({
-  pathname: window.location.pathname,
-  search: window.location.search,
-  state: window.history.state,
-});
+export const initialLocation = (): RouterLocation => {
+  const { pathname, search, state } = getRouterEnv().currentLocation();
+  return { pathname, search, state };
+};
 export const setSnapshot = (next: RouterSnapshot) => {
   snapshotRef.current = next;
 };

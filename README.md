@@ -45,6 +45,28 @@ Most React routers ask you to choose: central route config *or* file-based route
 npm install clear-safe-router
 ```
 
+### Headless core (no React, no DOM)
+
+The navigation kernel — matching, caching, loaders, guards, actions — is a
+framework-free module shipped as the `clear-safe-router/core` subpath:
+
+```ts
+import { setRouterEnv, nullEnv, navigate, snapshot } from 'clear-safe-router/core';
+
+// Provide your own platform (memory history, server, custom shell).
+// Start from `nullEnv` and override only what your host can support:
+setRouterEnv({
+  ...nullEnv,
+  currentLocation: () => ({ pathname: '/a', search: '', state: null }),
+  currentUrl: () => '/a',
+});
+```
+
+The core compiles without `lib: DOM` and never touches `window`/`document` —
+every platform operation goes through the `RouterEnv` seam. The React layer is
+an adapter on top of it; the same seam is the integration point for other view
+layers.
+
 ### 1. Add the Vite plugin
 
 ```ts

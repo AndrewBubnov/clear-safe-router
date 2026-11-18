@@ -10,5 +10,5 @@
     "rootDir": "./src",
     "tsBuildInfoFile": "./node_modules/.cache/tsc-build/tsbuildinfo"
   },
-  "include": ["src/index.tsx", "src/types.ts", "src/vite-env.d.ts", "src/vite-plugin/index.ts"]
+  "include": ["src/index.tsx", "src/core/index.ts", "src/types.ts", "src/vite-env.d.ts", "src/vite-plugin/index.ts"]
 }

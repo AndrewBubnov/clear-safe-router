@@ -4,7 +4,7 @@ import type {
   InvalidateResult,
   RouterRuntime,
   RouteNode,
-} from "../types";
+} from "./types";
 import {
   activeControllerRef,
   blockerStateStore,
@@ -33,7 +33,6 @@ import {
   isCacheFresh,
   runLoader,
   clearCacheAndFlights,
-  prefetchLazyChunk,
 } from "./cache";
 import {
   matchRoutes,
@@ -48,12 +47,13 @@ import {
 import { loadLocation, stopPolling, guardsAllowPrefetch } from "./navigate";
 import { captureScroll } from "./scroll";
 import { routerConfig } from "./config";
+import { getRouterEnv } from "./env";
 
 export const navigate = async (
   target: Parameters<RouterRuntime["navigate"]>[0],
 ) => {
   if (target === -1) {
-    history.back();
+    getRouterEnv().back();
     return;
   }
   const next =
@@ -208,17 +208,13 @@ const runPrefetch = async (
       "prefetch",
       guard.context,
     );
-  prefetchLazyChunk(matches);
+  // The core does not know about components: the adapter registers a warm-up
+  // via `routerConfig.onPrefetch` (lazy chunk preloading lives in the view layer).
+  routerConfig.onPrefetch?.(matches);
 };
 const prefetchQueue: (() => Promise<void>)[] = [];
 let activePrefetches = 0;
-const maxConcurrentPrefetches = () =>
-  typeof window !== "undefined" &&
-  typeof window.matchMedia === "function" &&
-  window.matchMedia("(pointer: coarse)").matches &&
-  window.matchMedia("(max-width: 768px)").matches
-    ? 2
-    : 4;
+const maxConcurrentPrefetches = () => (getRouterEnv().isSmallTouchDevice() ? 2 : 4);
 const drainPrefetchQueue = () => {
   const max = maxConcurrentPrefetches();
   while (activePrefetches < max && prefetchQueue.length) {
@@ -245,20 +241,18 @@ export const prefetch = (
     drainPrefetchQueue();
   });
 export const handlePopState = () => {
+  const env = getRouterEnv();
   if (suppressPopstateRef.current) {
     const expected = suppressPopstateRef.current;
     suppressPopstateRef.current = null;
-    if (`${window.location.pathname}${window.location.search}` === expected) return;
+    if (env.currentUrl() === expected) return;
   }
 
   // Leaving the current page via history buttons must save its scroll too —
   // loadLocation skips capture on the popstate path by design.
   captureScroll(snapshot().location);
-  const location = {
-    pathname: window.location.pathname,
-    search: window.location.search,
-    state: window.history.state,
-  };
+  const { pathname, search, state } = env.currentLocation();
+  const location = { pathname, search, state };
   if (
     blockerStateStore.getState() === "blocked" ||
     blockerStateStore.getState() === "charged"
@@ -268,7 +262,7 @@ export const handlePopState = () => {
       blockedTargetStore.setState(location);
     }
     suppressPopstateRef.current = `${snapshot().location.pathname}${snapshot().location.search}`;
-    history.forward();
+    env.forward();
     emitSnapshot();
     return;
   }
@@ -312,22 +306,20 @@ export const resetRouterState = () => {
   stopPolling();
 };
 export const setupRevalidation = () => {
+  const env = getRouterEnv();
   const focusHandler = () => {
-    if (
-      document.visibilityState === "visible" &&
-      routerConfig.revalidateOnFocus
-    )
+    if (env.isVisible() && routerConfig.revalidateOnFocus)
       void invalidate(undefined, { staleOnly: true });
   };
   const onlineHandler = () => {
     if (routerConfig.revalidateOnReconnect)
       void invalidate(undefined, { staleOnly: true });
   };
-  document.addEventListener("visibilitychange", focusHandler);
-  window.addEventListener("online", onlineHandler);
+  const offVisibility = env.onVisibilityChange(focusHandler);
+  const offOnline = env.onOnline(onlineHandler);
   return () => {
-    document.removeEventListener("visibilitychange", focusHandler);
-    window.removeEventListener("online", onlineHandler);
+    offVisibility();
+    offOnline();
   };
 };
 export const updateSearchParams = (
@@ -350,10 +342,9 @@ export const updateSearchParams = (
   const search = nextSearch.toString();
   const previousLocation = snapshot().location;
   const location = { ...previousLocation, search: search ? `?${search}` : "" };
-  history.replaceState(
-    location.state ?? null,
-    "",
+  getRouterEnv().replace(
     `${location.pathname}${location.search}`,
+    location.state,
   );
   updateSnapshot((previous) => ({ ...previous, location }));
   // Keep the data rendered for the active matches: a search-only update must not
@@ -397,7 +388,6 @@ export const submitRouteAction = async (
         typeof update === "function" ? update(contextStore.getState()) : update,
       );
     },
-    redirect: async (_to: string) => {},
   };
   const action = leaf.route.options.actions(args)[name];
   if (!action)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSearch, interpolate, isParamSegment, isVerticalScroll, matchRoutes, matchSegments, matchesPath, sleep, splitLocation } from '../../src/runtime/match';
+import { formatSearch, interpolate, isParamSegment, isVerticalScroll, matchRoutes, matchSegments, matchesPath, sleep, splitLocation } from '../../src/core/match';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({

@@ -2,8 +2,8 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 import { useSubmitAction } from '../../src/index';
-import { cache, snapshot } from '../../src/runtime/state';
-import { configureRouter } from '../../src/runtime/config';
+import { cache, snapshot } from '../../src/core/state';
+import { configureRouter } from '../../src/core/config';
 import {
   getBlockedTarget,
   navigate,
@@ -334,7 +334,7 @@ describe('navigate parity (original navigate.test.ts)', () => {
       await vi.advanceTimersByTimeAsync(1000);
       expect(loader).toHaveBeenCalledTimes(2);
       expect(loader.mock.calls.length).toBeGreaterThan(1);
-      const { dataStore } = await import('../../src/runtime/state');
+      const { dataStore } = await import('../../src/core/state');
       expect(dataStore.getState().get('/test|/test')).toBe('v2');
     });
 

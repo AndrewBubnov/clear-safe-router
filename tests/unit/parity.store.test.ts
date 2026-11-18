@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useSyncExternalStore } from 'react';
 import { act, renderHook } from '@testing-library/react';
-import { create, useGlobalState } from '../../src/create';
+import { create, useGlobalState } from '../../src/core/create';
 
 describe('create store (original create.test.ts)', () => {
   it('creates store with initial state', () => {

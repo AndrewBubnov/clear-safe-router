@@ -1,8 +1,9 @@
 import { useEffect, useRef, type CSSProperties, type MouseEventHandler, type ReactElement, type ReactNode, type MouseEvent } from 'react';
 import type { DefaultPrefetch, ElementProps, LinkProps, LinkState } from './types';
 import { resolveTarget, routerConfig, routerRuntime, useLinkState } from './runtime';
+import { getRouterEnv } from './core/env';
 
-const isMobile = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches && window.matchMedia('(max-width: 768px)').matches;
+const isMobile = () => getRouterEnv().isSmallTouchDevice();
 
 export const Link = (props: LinkProps) => {
   const {

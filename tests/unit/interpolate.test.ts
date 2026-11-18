@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { interpolate, matchSegments } from '../../src/runtime/match';
+import { interpolate, matchSegments } from '../../src/core/match';
 
 describe('interpolate', () => {
   it('replaces named segments', () => {

@@ -2,9 +2,9 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { forwardRef, memo } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Outlet, Router } from '../../src/index';
-import { resetRouterState, setRouterConfig } from '../../src/runtime/actions';
+import { resetRouterState, setRouterConfig } from '../../src/core/actions';
 import { resolveComponent } from '../../src/route/lazy';
-import { LAZY_MARKER } from '../../src/constants';
+import { LAZY_MARKER } from '../../src/core/constants';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({

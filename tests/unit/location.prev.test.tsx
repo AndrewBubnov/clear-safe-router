@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 import { Router, routerRuntime, Outlet, useLocation } from '../../src/index';
 import { resetRouterState, setRouterConfig } from '../../src/runtime';
-import { snapshot } from '../../src/runtime/state';
+import { snapshot } from '../../src/core/state';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({
   id, path, options, children,

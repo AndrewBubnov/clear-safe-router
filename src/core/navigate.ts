@@ -1,4 +1,4 @@
-import type { RouterLocation, RouterSnapshot, RouteMatch } from "../types";
+import type { RouterLocation, RouterSnapshot, RouteMatch } from "./types";
 import {
   activeControllerRef,
   blockerStateStore,
@@ -29,10 +29,12 @@ import {
   type AfterLoadHook,
   type BeforeLoadHook,
 } from "./config";
+import { getRouterEnv } from "./env";
 
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 const unmatchedRouteWarnings = new Set<string>();
 const REDIRECT_LIMIT = 10;
+export { REDIRECT_LIMIT };
 
 /** Thrown by the guard's `redirect()` to abort the rest of the hook body —
  * code after `await redirect(...)` must not run. Caught by the guard chain. */
@@ -48,34 +50,20 @@ export const commit = (
 ) => {
   const write = () => {
     const url = `${next.location.pathname}${next.location.search}`;
+    const env = getRouterEnv();
     if (fromPop) {
-      if (url !== `${window.location.pathname}${window.location.search}`)
-        history.replaceState(next.location.state ?? null, "", url);
-    } else if (replace)
-      history.replaceState(next.location.state ?? null, "", url);
-    else if (url !== `${window.location.pathname}${window.location.search}`)
-      history.pushState(next.location.state ?? null, "", url);
+      if (url !== env.currentUrl()) env.replace(url, next.location.state);
+    } else if (replace) env.replace(url, next.location.state);
+    else if (url !== env.currentUrl()) env.push(url, next.location.state);
     committedLocationRef.current = next.location;
     setSnapshot(next);
     emit();
   };
-  if (
-    !fromPop &&
-    routerConfig.isAnimated &&
-    typeof document !== "undefined" &&
-    document.startViewTransition
-  ) {
-    if (routerConfig.animationDuration)
-      document.documentElement.style.setProperty(
-        "--pg-transition-duration",
-        `${routerConfig.animationDuration}ms`,
-      );
-    try {
-      const transition = document.startViewTransition(write);
-      transition.finished.catch(() => {});
-    } catch {
-      write();
-    }
+  if (!fromPop && routerConfig.isAnimated && getRouterEnv().startViewTransition) {
+    getRouterEnv().startViewTransition!(
+      write,
+      routerConfig.animationDuration,
+    );
   } else write();
 };
 export const loadLocation = async (
@@ -101,8 +89,14 @@ export const loadLocation = async (
   const prevLocation = from ? { pathname: from.pathname, search: from.search } : undefined;
   const nextLocation: RouterLocation = prevLocation ? { ...location, prevLocation } : { ...location };
   const matches = matchRoutes(location.pathname, location, routesRef.current);
+  // `'auto'` resolves the dev signal if the host provides one (Vite); a
+  // non-Vite host opts in/out explicitly via `configureRouter`.
+  const devMode =
+    routerConfig.warnOnUnmatchedRoutes === true ||
+    (routerConfig.warnOnUnmatchedRoutes === "auto" &&
+      (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true);
   if (
-    import.meta.env.DEV &&
+    devMode &&
     matches.length === 0 &&
     !unmatchedRouteWarnings.has(location.pathname)
   ) {
@@ -247,10 +241,9 @@ export const loadLocation = async (
     dataStore.setState(new Map(data));
     if (options.fromPop) {
       committedLocationRef.current = nextLocation;
-      history.replaceState(
-        location.state ?? null,
-        "",
+      getRouterEnv().replace(
         `${location.pathname}${location.search}`,
+        location.state,
       );
       emit();
     } else
@@ -291,10 +284,9 @@ export const loadLocation = async (
     // location must not keep polling in the background.
     schedulePolling(matches, location);
     if (options.fromPop) {
-      history.replaceState(
-        location.state ?? null,
-        "",
+      getRouterEnv().replace(
         `${location.pathname}${location.search}`,
+        location.state,
       );
       emit();
     } else

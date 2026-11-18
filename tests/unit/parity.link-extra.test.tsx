@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Link, Outlet, Router, useLocation } from '../../src/index';
-import { navigate, resetRouterState, setRouterConfig } from '../../src/runtime/actions';
+import { navigate, resetRouterState, setRouterConfig } from '../../src/core/actions';
 import type { FileRouteOptions, LinkState, RouteNode } from '../../src/types';
 
 const RawLink = Link as unknown as (props: any) => ReturnType<typeof Link>;

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { Link, Outlet, Router } from '../../src/index';
-import { navigate, resetRouterState, setRouterConfig } from '../../src/runtime/actions';
+import { navigate, resetRouterState, setRouterConfig } from '../../src/core/actions';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({

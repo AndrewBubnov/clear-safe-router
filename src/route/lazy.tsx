@@ -1,5 +1,5 @@
 import { lazy as reactLazy, type ComponentType } from 'react';
-import { LAZY_MARKER } from '../constants';
+import { LAZY_MARKER } from '../core/constants';
 import type { LazyComponent } from '../types';
 
 const lazyCache = new WeakMap<LazyComponent, ComponentType<any>>();

@@ -13,7 +13,7 @@ import {
   useRouterContext,
   useRouterSnapshot,
 } from "./runtime";
-import { blockerStateStore, blockedTargetStore } from "./runtime/state";
+import { blockerStateStore, blockedTargetStore } from "./core/state";
 import type { CacheSnapshot, RouteStatus as RouterStatus } from "./types";
 
 export const useNavigate = () => routerRuntime.navigate;
