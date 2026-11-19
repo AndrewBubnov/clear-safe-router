@@ -5,7 +5,7 @@ test('navigates via a Link and renders the target page', async ({ page }) => {
 	await page.goto('/playground');
 	await expect(page.getByRole('heading', { name: 'Clear Router Playground' })).toBeVisible();
 
-	await nav(page).getByRole('link', { name: 'Cache' }).click();
+	await nav(page).getByRole('link', { name: 'Cache', exact: true }).click();
 
 	await expect(page.getByRole('heading', { name: 'Cache: eviction, gcTime, invalidation' })).toBeVisible();
 	await expect(page).toHaveURL(/\/playground\/cache$/);

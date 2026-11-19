@@ -123,7 +123,10 @@ export const PlaygroundNav = () => {
           <NavLink to="/playground" exact>
             Home
           </NavLink>
-          <NavLink to="/playground/cache">Cache</NavLink>
+          <NavLink to="/playground/cache" exact>
+            Cache
+          </NavLink>
+          <NavLink to="/playground/cache/external/$extId" params={{ extId: 'CLR' }}>External cache</NavLink>
           <NavLink to="/playground/retry">Retry</NavLink>
           <NavLink to="/playground/retry-raw">No-retry</NavLink>
           <NavLink to="/playground/actions">Actions</NavLink>

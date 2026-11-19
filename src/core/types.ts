@@ -54,6 +54,10 @@ export type RouteLogicOptions<P extends Record<string, string> = Record<string, 
   afterLoad?: (args: Omit<RouteHookArgs<P>, 'redirect' | 'setContext'>) => void | Promise<void>;
   actions?: (args: Omit<RouteHookArgs<P>, 'redirect'>) => Record<string, (data: Record<string, unknown>) => unknown | Promise<unknown>>;
   staleTime?: number;
+  /** Freshness window (ms) a prefetch result keeps over the route's own staleTime.
+   * `0` drops the window — the loader re-runs on the first navigation after a prefetch.
+   * Default: 30s. */
+  prefetchStaleTime?: number;
   gcTime?: number;
   retry?: Retry;
   optimistic?: boolean;

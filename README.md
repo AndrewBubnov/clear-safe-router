@@ -259,6 +259,7 @@ import { routeTree } from './routeTree.gen';
 | `defaultStaleTime` | `number` | `0` | Default time before cached loader data is considered stale |
 | `defaultRetry` | `number \| { count, delay }` | `undefined` | Default revalidation retry policy |
 | `defaultPrefetch` | `'hover' \| 'render' \| 'viewport' \| 'none' \| 'auto'` | `'hover'` | Default prefetch strategy for `Link`s. `'auto'` resolves at hover-time: `hover` on desktop, `viewport` on mobile |
+| `defaultPrefetchStaleTime` | `number` | `30000` | How long (ms) a prefetch result stays fresh over the route's own `staleTime`. `0` drops the window: the loader re-runs on the first navigation after a prefetch (recommended for apps whose loaders delegate to an external data cache). Route-level override: `prefetchStaleTime` |
 | `defaultHoverPrefetchDelay` | `number` | `150` | Hover delay in ms before prefetching |
 | `defaultMinLoaderDuration` | `number` | `0` | Default minimum time the pending fallback stays visible (anti-flicker) |
 | `defaultBeforeLoad` | hook | `undefined` | Runs first in the `beforeLoad` guard chain of every navigation (before all route hooks, receiving the leaf's params) |
@@ -512,6 +513,62 @@ Caching semantics:
 ```tsx
 { pollingInterval: 5000 }
 ```
+
+### External data cache (TanStack Query)
+
+Loaders don't have to use the router's own cache. Delegate storage and freshness to an external cache — TanStack Query is the common choice — by passing the client through the router context and calling it from the loader:
+
+```tsx
+// main.tsx — the router stays data-agnostic. Components that read the external
+// cache via useQuery additionally need TanStack's own QueryClientProvider;
+// loaders and actions receive the client through the router context alone.
+<QueryClientProvider client={queryClient}>
+  <Router routes={routeTree} context={{ queryClient }} />
+</QueryClientProvider>
+```
+
+```tsx
+// routes/products/$productId.tsx
+export const Route = createFileRoute('/products/$productId')({
+  loader: ({ context, params }) =>
+    context.queryClient.query({
+      queryKey: ['product', params.productId], // fact identity, not route identity
+      queryFn: () => fetchProduct(params.productId),
+      staleTime: 30_000, // the external cache's freshness window
+    }),
+  component: lazy(() => import('@/pages/ProductPage')),
+});
+```
+
+The loader runs on every navigation (that is what loaders are for), but `queryClient.query()` resolves from the cache while the entry is fresh and awaits a refetch once `staleTime` has passed — so the external cache owns storage, eviction and staleness, while the router owns the navigation state machine: guards, pending/optimistic transitions, scroll, abort. Hover-prefetch warms the same external cache (the queryClient flows into prefetch loaders through the context), so a hover fetch and a later navigation share the network request — unless the navigation happens within the router's prefetch window (30s by default, configurable via `defaultPrefetchStaleTime`), where the loader does not run at all (see the list below).
+
+Rules of the recipe:
+
+- **Don't set `staleTime`/`gcTime` on such routes.** With the default `staleTime: 0` the router never serves its own copy, so the external cache is the single freshness authority on every loader run. If you do set them, the router's cache starts answering without consulting the external cache — two freshness authorities on one fact, and the stale one wins. (One exception: the prefetch window — set `defaultPrefetchStaleTime={0}` to remove it, see the list below.)
+- **Invalidate facts, not URLs.** From actions: `queryClient.invalidateQueries({ queryKey: ['product', id] })`. That is usually the whole job: active `useQuery` subscriptions refetch immediately, and the route snapshot catches up on the next navigation (the loader sees the stale fact and refetches). Pattern-based router `invalidate()` walks the router's own cache keys and cannot see external entries; it only re-runs loaders, so call it after invalidating the fact solely when you need the loader snapshot refreshed while staying on the page.
+- **Mutations** belong to the external cache's primitives (`useMutation`, optimistic updates with rollback); router actions stay for view-level side effects.
+- `LoaderArgs.context` is intentionally loosely typed (`Record<string, unknown>`) — instead of casting in every loader, wrap the lookup in a one-line helper that throws if the client is missing:
+
+```ts
+import { QueryClient } from '@tanstack/react-query';
+
+export const getQueryClient = (context: Record<string, unknown>): QueryClient => {
+  if (!(context.queryClient instanceof QueryClient)) {
+    throw new Error('QueryClient is missing from router context — pass it via <Router context={{ queryClient }}>');
+  }
+  return context.queryClient;
+};
+```
+
+What stops working for routes whose data lives in an external cache — these are consequences of the external cache owning the data, not defects:
+
+- `staleTime`, `gcTime`, `optimistic` — ignored: freshness, eviction and optimistic rendering are owned by the external cache.
+- `pollingInterval` still re-runs the loader on schedule, but the refetch decision belongs to the external cache (`query()` answers from cache while the entry is fresh); TanStack's own `refetchInterval` is the idiomatic polling there.
+- The "prefetched = fresh for 30 seconds" window still applies by default — and it is the one place the router cache outranks the external cache. Within it the first navigation reuses the router's prefetched snapshot and the loader does not run, so the external cache is not consulted: if the fact was invalidated between hover and click, the prefetched (now stale) snapshot wins. The fix is one prop, not disabling prefetch: pass `defaultPrefetchStaleTime={0}` and the window disappears while hover prefetch keeps warming the external cache — hover→click dedup simply moves to the external cache. For mixed apps (some routes on the external cache, some on the router's) use the route-level `prefetchStaleTime` override instead.
+- `useCacheSnapshot()` / `<CacheVisualizer>` don't see external entries; data observability moves to TanStack Devtools.
+- `resetRouterState()` doesn't clear the external cache — its lifecycle belongs to the app.
+
+A live demo of this recipe lives in the playground: `/playground/cache/external/CLR` (see `playground/routes/playground/cache/external/$extId.tsx` and `playground/pages/ExternalCachePage.tsx`).
 
 ## Retry
 

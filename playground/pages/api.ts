@@ -86,6 +86,17 @@ export const fetchCachePayload = async () => {
 	return `Cache lab payload (call ${n})`;
 };
 
+/** Drifting quote for the external (TanStack Query) cache demo. */
+export type ExternalQuote = { symbol: string; price: number; fetchedAt: string; loads: number };
+
+export const fetchExternalQuote = async (symbol: string): Promise<ExternalQuote> => {
+	const n = trackCall(`ext-${symbol}`);
+	await delay(400);
+	const base = PRICES[symbol] ?? 100;
+	PRICES[symbol] = Math.round((base + (Math.random() - 0.5) * base * 0.04) * 100) / 100;
+	return { symbol, price: PRICES[symbol], fetchedAt: timeNow(), loads: n };
+};
+
 const timeNow = () => new Date().toLocaleTimeString('en-GB');
 
 const TRAFFIC = [

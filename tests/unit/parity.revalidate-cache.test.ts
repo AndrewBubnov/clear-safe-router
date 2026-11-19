@@ -27,7 +27,12 @@ const signal = () => new AbortController().signal;
 const cacheKey = (pathname = '/test', search = '') => `/test|${pathname}${search}`;
 
 beforeEach(() => {
-  configureRouter({ maxCacheSize: 100, defaultStaleTime: undefined, defaultRetry: undefined });
+  configureRouter({
+    maxCacheSize: 100,
+    defaultStaleTime: undefined,
+    defaultRetry: undefined,
+    defaultPrefetchStaleTime: undefined,
+  });
   vi.useFakeTimers();
 });
 afterEach(() => { resetRouterState(); vi.useRealTimers(); vi.restoreAllMocks(); });
@@ -75,6 +80,33 @@ describe('revalidateCache parity (original revalidateCache.test.ts)', () => {
     const match = matchFor({ loader });
     await runLoader(match, loc(), signal(), false, 'prefetch');
     await runLoader(match, loc(), signal(), false, 'navigation');
+    expect(await runLoader(match, loc(), signal(), false, 'navigation')).toBe('navigation data');
+    expect(loader).toHaveBeenCalledTimes(2);
+  });
+
+  it('prefetchStaleTime: 0 drops the preload window (loader reruns on first navigation)', async () => {
+    const loader = vi.fn().mockResolvedValueOnce('prefetched').mockResolvedValueOnce('navigation data');
+    const match = matchFor({ loader, prefetchStaleTime: 0 });
+    await runLoader(match, loc(), signal(), false, 'prefetch');
+    expect(await runLoader(match, loc(), signal(), false, 'navigation')).toBe('navigation data');
+    expect(loader).toHaveBeenCalledTimes(2);
+  });
+
+  it('route prefetchStaleTime overrides the global default', async () => {
+    configureRouter({ defaultPrefetchStaleTime: 0 });
+    const loader = vi.fn().mockResolvedValueOnce('prefetched').mockResolvedValueOnce('navigation data');
+    const match = matchFor({ loader, prefetchStaleTime: 29_000 });
+    await runLoader(match, loc(), signal(), false, 'prefetch');
+    vi.advanceTimersByTime(28_000);
+    expect(await runLoader(match, loc(), signal(), false, 'navigation')).toBe('prefetched');
+    expect(loader).toHaveBeenCalledOnce();
+  });
+
+  it('defaultPrefetchStaleTime: 0 disables the preload window globally', async () => {
+    configureRouter({ defaultPrefetchStaleTime: 0 });
+    const loader = vi.fn().mockResolvedValueOnce('prefetched').mockResolvedValueOnce('navigation data');
+    const match = matchFor({ loader });
+    await runLoader(match, loc(), signal(), false, 'prefetch');
     expect(await runLoader(match, loc(), signal(), false, 'navigation')).toBe('navigation data');
     expect(loader).toHaveBeenCalledTimes(2);
   });
