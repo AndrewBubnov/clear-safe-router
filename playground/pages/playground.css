@@ -347,6 +347,13 @@ root {
 	margin: 12px 0;
 }
 
+/* Long demo labels (external cache card) wrap to a second line instead of clipping. */
+.pg-btn-grid .mantine-Button-label {
+	white-space: normal;
+	line-height: 1.25;
+	padding-block: 2px;
+}
+
 /* Mantine slides the label out and the loader in; keep the swap instant. */
 .pg-btn-grid .mantine-Button-inner,
 .pg-btn-grid .mantine-Button-loader {
@@ -1144,6 +1151,7 @@ root {
 }
 
 .pg-nav-presets {
+	width: 100%;
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: 8px 16px;
@@ -1164,10 +1172,23 @@ root {
 a.mantine-Button-root {
 	color: var(--button-color);
 	font-weight: 500;
-	font-size: 14px;
+	font-size: 15px;
 }
 
+/* Anchor buttons rendered via Link's `as` (MUI chips, subtle Mantine): drop
+ * MUI defaults (uppercase, wide padding, min-width) so long labels fit; all
+ * button sizes follow the shared 15px scale. */
 a.mantine-Button-root[data-variant='subtle'],
+a.MuiButton-root {
+	text-transform: none;
+	font-size: 15px;
+	font-weight: 500;
+	padding: 4px 10px;
+	min-width: 0;
+	white-space: nowrap;
+	flex: none;
+}
+
 a.MuiButton-root {
 	color: var(--text);
 }
@@ -1320,8 +1341,9 @@ h1 {
 	transition: transform 0.25s ease;
 }
 
-/* 14 nav links need about 1140px; collapse earlier so they never clip. */
-@media (width <= 1160px) {
+/* 15 nav links at the 15px scale need more room; collapse earlier so they
+ * never clip. */
+@media (width <= 1280px) {
 	:root {
 		--header-h: 60px;
 	}
