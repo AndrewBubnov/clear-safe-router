@@ -18,6 +18,11 @@ import type {
   RouterLocation,
 } from "./types";
 
+/** Built-in freshness grace for prefetch results on ordinary routes: a prefetched
+ * entry stays fresh over the route's own staleTime for this window. Routes
+ * flagged `externalCache` bypass it entirely (staleTime 0). */
+const PRELOAD_STALE_TIME = 30_000;
+
 const isFresh = (entry?: CacheEntry) =>
   !!entry &&
   (Date.now() - entry.updatedAt < entry.staleTime ||
@@ -99,6 +104,12 @@ export const runLoader = (
 ): Promise<unknown> => {
   const loader = match.route.options.loader;
   if (!loader) return Promise.resolve(undefined);
+  // An already-aborted caller neither rides nor creates a flight: the abort
+  // listener below would never fire (the event already happened), so the
+  // flight would run un-aborted on its own controller and write the cache.
+  if (signal.aborted) return Promise.resolve(undefined);
+  const externalCache =
+    match.route.options.externalCache ?? routerConfig.defaultExternalCache;
   const key = routeKey(match.route, location);
   const existing = flights.get(key);
   if (existing && !existing.signal.aborted) {
@@ -122,8 +133,9 @@ export const runLoader = (
   if (!force && isFresh(cached)) {
     if (reason === "navigation" && cached?.reason === "prefetch") {
       cached.reason = "navigation";
-      cached.staleTime =
-        match.route.options.staleTime ?? routerConfig.defaultStaleTime ?? 0;
+      cached.staleTime = externalCache
+        ? 0
+        : match.route.options.staleTime ?? routerConfig.defaultStaleTime ?? 0;
       cached.prefetchedUntil = undefined;
     }
     touch(key, cached!);
@@ -148,19 +160,20 @@ export const runLoader = (
       if (previous?.timer) clearTimeout(previous.timer);
       const staleTime =
         match.route.options.staleTime ?? routerConfig.defaultStaleTime ?? 0;
-      const prefetchStaleTime =
-        match.route.options.prefetchStaleTime ??
-        routerConfig.defaultPrefetchStaleTime ??
-        30_000;
+      // Flagged routes never claim freshness — the entry stays stale (0) even
+      // for prefetch; ordinary routes keep the built-in prefetch grace.
       const entry: CacheEntry = {
         value,
         updatedAt: Date.now(),
-        staleTime:
-          reason === "prefetch" ? Math.max(staleTime, prefetchStaleTime) : staleTime,
+        staleTime: externalCache
+          ? 0
+          : reason === "prefetch"
+            ? Math.max(staleTime, PRELOAD_STALE_TIME)
+            : staleTime,
         reason,
         prefetchedUntil:
-          reason === "prefetch"
-            ? Date.now() + Math.max(0, prefetchStaleTime - staleTime)
+          !externalCache && reason === "prefetch"
+            ? Date.now() + Math.max(0, PRELOAD_STALE_TIME - staleTime)
             : undefined,
         gcTime: match.route.options.gcTime,
         lastUsed: Date.now(),

@@ -12,7 +12,9 @@ import { getQueryClient } from "@/pages/queryClient";
  *
  * Note: no route staleTime/gcTime here on purpose — with those set, the
  * router's own cache would serve its (possibly stale) copy without asking the
- * external cache. See the "External data cache" recipe in README.md.
+ * external cache. The section route flags `externalCache: true`, which the
+ * kernel enforces: the router cache never claims freshness below it. See the
+ * "External data cache" recipe in README.md.
  */
 export const Route = createFileRoute("/playground/cache/external/$extId")({
   loader: ({ context, params }) =>
@@ -23,5 +25,4 @@ export const Route = createFileRoute("/playground/cache/external/$extId")({
     }),
   pendingFallback: <PageSkeleton />,
   component: lazy(() => import("@/pages/ExternalCachePage")),
-  prefetchStaleTime: 0,
 });

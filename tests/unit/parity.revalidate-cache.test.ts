@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FileRouteOptions, RouteMatch, RouteNode } from '../../src/types';
 import { runLoader } from '../../src/core/cache';
+import { withInheritedExternalCache } from '../../src/core/actions';
 import { cache, flights } from '../../src/core/state';
 import { configureRouter } from '../../src/core/config';
 import { navigate, prefetch, resetRouterState, setRouterConfig } from '../../src/runtime';
@@ -31,7 +32,7 @@ beforeEach(() => {
     maxCacheSize: 100,
     defaultStaleTime: undefined,
     defaultRetry: undefined,
-    defaultPrefetchStaleTime: undefined,
+    defaultExternalCache: undefined,
   });
   vi.useFakeTimers();
 });
@@ -84,26 +85,25 @@ describe('revalidateCache parity (original revalidateCache.test.ts)', () => {
     expect(loader).toHaveBeenCalledTimes(2);
   });
 
-  it('prefetchStaleTime: 0 drops the preload window (loader reruns on first navigation)', async () => {
+  it('externalCache: true drops the prefetch window (loader reruns on first navigation after prefetch)', async () => {
     const loader = vi.fn().mockResolvedValueOnce('prefetched').mockResolvedValueOnce('navigation data');
-    const match = matchFor({ loader, prefetchStaleTime: 0 });
+    const match = matchFor({ loader, externalCache: true });
     await runLoader(match, loc(), signal(), false, 'prefetch');
     expect(await runLoader(match, loc(), signal(), false, 'navigation')).toBe('navigation data');
     expect(loader).toHaveBeenCalledTimes(2);
   });
 
-  it('route prefetchStaleTime overrides the global default', async () => {
-    configureRouter({ defaultPrefetchStaleTime: 0 });
+  it('externalCache ignores the route\'s own staleTime (even Infinity)', async () => {
     const loader = vi.fn().mockResolvedValueOnce('prefetched').mockResolvedValueOnce('navigation data');
-    const match = matchFor({ loader, prefetchStaleTime: 29_000 });
+    const match = matchFor({ loader, externalCache: true, staleTime: Infinity });
     await runLoader(match, loc(), signal(), false, 'prefetch');
-    vi.advanceTimersByTime(28_000);
-    expect(await runLoader(match, loc(), signal(), false, 'navigation')).toBe('prefetched');
-    expect(loader).toHaveBeenCalledOnce();
+    vi.advanceTimersByTime(60_000);
+    expect(await runLoader(match, loc(), signal(), false, 'navigation')).toBe('navigation data');
+    expect(loader).toHaveBeenCalledTimes(2);
   });
 
-  it('defaultPrefetchStaleTime: 0 disables the preload window globally', async () => {
-    configureRouter({ defaultPrefetchStaleTime: 0 });
+  it('defaultExternalCache: true flags every route without its own value', async () => {
+    configureRouter({ defaultExternalCache: true });
     const loader = vi.fn().mockResolvedValueOnce('prefetched').mockResolvedValueOnce('navigation data');
     const match = matchFor({ loader });
     await runLoader(match, loc(), signal(), false, 'prefetch');
@@ -360,5 +360,33 @@ describe('revalidateCache parity (original revalidateCache.test.ts)', () => {
     await navigation;
     expect(cache.get(cacheKey())?.value).toBe('nav data');
     expect(flights.has(cacheKey())).toBe(false);
+  });
+});
+
+describe('externalCache inheritance (setRouterConfig walk)', () => {
+  it('a flagged section inherits to every child; an explicit false opts out', () => {
+    const tree = node('__root__', '/', {}, [
+      node('/ext', '/ext', { externalCache: true }, [
+        node('/ext/:id', '/ext/:id', {}),
+        node('/ext/plain', '/ext/plain', { externalCache: false }),
+      ]),
+      node('/plain', '/plain', {}, [node('/plain/x', '/plain/x', {})]),
+    ]);
+    const result = withInheritedExternalCache(tree) as unknown as {
+      children: { options: { externalCache?: boolean }; children: { options: { externalCache?: boolean } }[] }[];
+    };
+    const [ext, plain] = result.children;
+    expect(ext.options.externalCache).toBe(true); // own value kept
+    expect(ext.children[0]!.options.externalCache).toBe(true); // inherited by the leaf
+    expect(ext.children[1]!.options.externalCache).toBe(false); // explicit opt-out wins
+    expect(plain.options.externalCache).toBeUndefined();
+    expect(plain.children[0]!.options.externalCache).toBeUndefined();
+  });
+
+  it('an unflagged tree is returned as-is (no copies, same references)', () => {
+    const child = node('/child', '/child', {});
+    const tree = node('/root', '/root', {}, [child]);
+    expect(withInheritedExternalCache(tree)).toBe(tree);
+    expect(withInheritedExternalCache(tree).children![0]).toBe(child);
   });
 });

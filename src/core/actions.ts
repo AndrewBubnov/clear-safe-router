@@ -74,15 +74,22 @@ export const invalidate = async (
   }
   let targetPath: string;
   let targetSearch: string | undefined;
+  // Canonical pathname (no trailing slash, no duplicate segments) so the target
+  // key always matches the key the navigation wrote — a raw "/users/1/" would
+  // otherwise produce a second, redundant loader run alongside the canonical one.
+  const canonicalize = (value: string) => {
+    const parts = value.split("/").filter(Boolean);
+    return parts.length ? `/${parts.join("/")}` : "/";
+  };
   if (target === undefined) {
-    targetPath = snapshot().location.pathname;
+    targetPath = canonicalize(snapshot().location.pathname);
     targetSearch = snapshot().location.search;
   } else if (typeof target === "string") {
     const split = splitLocation(target);
-    targetPath = split.pathname;
+    targetPath = canonicalize(split.pathname);
     targetSearch = target.includes("?") ? split.search : undefined;
   } else {
-    targetPath = resolveTarget(target).pathname;
+    targetPath = canonicalize(resolveTarget(target).pathname);
     targetSearch = undefined;
   }
   const isBracketSegment = (part: string) => /^\[[^\]]+]$/.test(part);
@@ -121,7 +128,7 @@ export const invalidate = async (
     // URL is revalidated at its own location with its own params.
     if (!leaf) continue;
     for (const match of [leaf]) {
-      const key = `${match.route.id}|${location.pathname}${location.search}`;
+      const key = routeKey(match.route, location);
       if (seen.has(key)) continue;
       seen.add(key);
       const entry = cache.get(key);
@@ -189,25 +196,31 @@ export const invalidate = async (
 };
 const runPrefetch = async (
   target: string | { to: string; params?: Record<string, string> },
+  signal?: AbortSignal,
 ) => {
+  const attempt = signal ?? new AbortController().signal;
+  if (attempt.aborted) return;
   const location =
     typeof target === "string" ? splitLocation(target) : resolveTarget(target);
   if (isSameLocation(location, snapshot().location)) return;
   const matches = matchRoutes(location.pathname, location, routesRef.current);
   // Guards run before prefetch loaders: a protected route is never prefetched,
   // so its data cannot end up cached without authorization. The guard chain's
-  // LOCAL context (guard setContext → loader) feeds the loaders.
-  const guard = await guardsAllowPrefetch(matches, location);
+  // LOCAL context (guard setContext → loader) feeds the loaders, and the guard
+  // work itself shares the attempt's signal.
+  const guard = await guardsAllowPrefetch(matches, location, attempt);
   if (!guard.allowed) return;
-  for (const match of matches)
+  for (const match of matches) {
+    if (attempt.aborted) return;
     await runLoader(
       match,
       location,
-      new AbortController().signal,
+      attempt,
       false,
       "prefetch",
       guard.context,
     );
+  }
   // The core does not know about components: the adapter registers a warm-up
   // via `routerConfig.onPrefetch` (lazy chunk preloading lives in the view layer).
   routerConfig.onPrefetch?.(matches);
@@ -224,11 +237,14 @@ const drainPrefetchQueue = () => {
 };
 export const prefetch = (
   target: string | { to: string; params?: Record<string, string> },
+  signal?: AbortSignal,
 ) =>
   new Promise<void>((resolve) => {
     const task = async () => {
       try {
-        await runPrefetch(target);
+        // An attempt aborted while queued silently skips on dequeue; the
+        // promise still resolves and the queue drains as usual.
+        if (!signal?.aborted) await runPrefetch(target, signal);
       } catch {
         /* prefetch is best effort */
       } finally {
@@ -277,8 +293,30 @@ export const processBlockedTarget = async () => {
   }
 };
 export const setRouterConfig = (root: RouteNode, size?: number) => {
-  routesRef.current = root;
+  routesRef.current = withInheritedExternalCache(root);
   if (size) routerConfig.maxCacheSize = size;
+};
+
+/** `externalCache` is declared on a section route and applies to everything
+ * below it (a child can opt out with an explicit `false`). Resolved once at
+ * registration: nodes without their own value get a shallow-copied options
+ * object carrying the ancestor's value, so cache reads never walk the tree. */
+export const withInheritedExternalCache = (
+  node: RouteNode,
+  inherited?: boolean,
+): RouteNode => {
+  const own = node.options.externalCache;
+  const effective = own ?? inherited;
+  const options =
+    own === undefined && inherited !== undefined
+      ? { ...node.options, externalCache: inherited }
+      : node.options;
+  const children = node.children?.map((child) => withInheritedExternalCache(child, effective));
+  const unchanged =
+    options === node.options &&
+    (!children || children.every((child, i) => child === node.children![i]));
+  if (unchanged) return node;
+  return { ...node, options, children };
 };
 export const resetRouterState = () => {
   activeControllerRef.current?.abort();

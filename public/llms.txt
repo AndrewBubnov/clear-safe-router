@@ -1,0 +1,73 @@
+# Clear Safe Router
+
+> Provider-free React SPA router with file-based routing and compile-time type-safe navigation. The navigation kernel is framework-free and can be driven by other view adapters through a `RouterEnv` platform seam.
+
+## Start Here
+
+- [README](README.md): User-facing setup, route conventions, loaders, caching, blockers, actions, prefetching, scroll restoration, and deployment.
+- [Agent guide](AGENTS.md): Repository commands, architecture, core isolation rules, testing, and definition of done.
+- [Package manifest](package.json): Scripts, dependencies, peer dependencies, and published subpaths.
+- [Playground](playground/): Main manual test app; route tree is generated from `playground/routes`.
+
+## Public Entry Points
+
+- [React API](src/index.tsx): Root `clear-safe-router` barrel: `Router`, `Link`, route helpers, hooks, and public types.
+- [Headless core](src/core/index.ts): `clear-safe-router/core`; curated framework-free API for navigation, matching, loaders, guards, caching, actions, and state.
+- [Browser environment](src/browser-env.ts): `clear-safe-router/browser-env`; DOM implementation of `RouterEnv` reusable by non-React adapters.
+- [Vite plugin](src/vite-plugin/index.ts): `clear-safe-router/vite`; generates the route tree and typed route registry.
+- [Core build entry](src/core-entry.ts): Thin Rollup entry that re-exports `src/core`; contains no logic.
+
+## Architecture
+
+- [Core kernel](src/core/): Framework-free code. It must not import React, Vite, DOM types, or use `window`, `document`, `history`, or `import.meta`.
+- [Platform seam](src/core/env.ts): `RouterEnv`, `nullEnv`, `setRouterEnv`, `getRouterEnv`, and structural DOM-free scroll types.
+- [Core types](src/core/types.ts): Framework-free route, loader, cache, snapshot, and typed-destination types. `TypedRouterRouteMap` lives here.
+- [React adapter](src/runtime/index.ts): Wires `browserEnv`, installs the adapter prefetch hook, sets the dev warning flag, and re-exports core APIs.
+- [React hooks](src/runtime/hooks.ts): Adapter hooks over the core snapshot and stores.
+- [Router component](src/router.tsx): Mounts the router, subscribes to popstate through `RouterEnv`, and starts revalidation.
+- [Link component](src/link.tsx): Typed navigation, active/pending state, and prefetch behavior.
+- [Route rendering](src/route/): `createFileRoute`, `getRoute`, `Outlet`, lazy components, and route context.
+- [Route generator](scripts/generate-routes.mjs): Scans route files, validates conventions, writes `routeTree.gen.ts`, and augments `clear-safe-router/core`.
+- [Type contract](tests/types/routes.test.tsx): Compile-time checks for typed routes, params, loader data, and navigation.
+
+## Route Registry
+
+- Generated apps augment `clear-safe-router/core`, not the root module.
+- The root API re-exports core types, so `Link`, `useNavigate`, and route hooks remain typed from `clear-safe-router`.
+- Do not hand-edit `playground/routeTree.gen.ts`; run `npm run router:generate`.
+- Route conventions: `__root.tsx` is required; `index.tsx`, `route.tsx`, `$param.tsx`, and `$.tsx` are supported. See the README for the full table.
+
+## Development
+
+```bash
+npm install
+npm run dev                 # generate routes + start playground
+npm run router:generate     # regenerate playground/routeTree.gen.ts
+npm run typecheck           # generate + tsc -b + public type tests
+npm run lint
+npm test
+npm run test:coverage
+npm run test:e2e            # Playwright against the playground
+npm run build:lib           # library JS + declarations
+npm run build:playground
+npm run build
+```
+
+For core-only changes, also run the no-DOM compile:
+
+```bash
+npx tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler \
+  --strict --skipLibCheck --lib ES2022 --types node src/core/index.ts
+```
+
+## Core Rules
+
+- `src/core` is framework-free. Platform behavior belongs in `RouterEnv` implementations.
+- Update `RouterEnv`, `nullEnv`, `browserEnv`, and test memory envs together when adding a platform method.
+- Keep `src/core/index.ts` curated; do not expose cache maps, refs, or listener internals from the public core barrel.
+- Preserve the root `clear-safe-router` API. Prefer additive changes; breaking changes require a major version.
+- `RouterEnv` and `routerConfig.onPrefetch` are process-global: one adapter per process.
+- `routerConfig.warnOnUnmatchedRoutes` defaults to `false`; the React adapter enables it from the bundler dev flag.
+- Core tests use `// @vitest-environment node`; React adapter tests use the default jsdom environment.
+- `resetRouterState()` does not reset `RouterEnv` or `routerConfig`; restore them explicitly in tests.
+- Do not commit `dist/`, `dist-playground/`, coverage, Playwright reports, or test results.

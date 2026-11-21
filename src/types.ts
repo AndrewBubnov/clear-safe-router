@@ -96,10 +96,10 @@ export type RouterProps = {
   animationDuration?: number;
   defaultRetry?: Retry;
   defaultStaleTime?: number;
-  /** Freshness window (ms) a prefetch keeps over a route's own staleTime. `0`
-   * disables it — recommended for apps whose loaders delegate to an external
-   * data cache (TanStack Query). Default: 30s. */
-  defaultPrefetchStaleTime?: number;
+  /** `externalCache` fallback for routes that don't declare it: the router cache
+   * never claims freshness — the loader re-runs on every navigation and the
+   * external data cache decides whether the network is hit. */
+  defaultExternalCache?: boolean;
   defaultLoaderFallback?: ReactNode;
   defaultErrorElement?: ReactNode;
   defaultPrefetch?: DefaultPrefetch;

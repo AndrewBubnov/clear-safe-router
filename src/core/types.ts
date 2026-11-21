@@ -40,6 +40,15 @@ export type RouteHookArgs<P extends Record<string, string> = Record<string, stri
   redirect(to: RedirectTarget): Promise<void>;
   setContext(update: Record<string, unknown> | ((previous: Record<string, unknown>) => Record<string, unknown>)): void;
 };
+/** Guard args: like RouteHookArgs but carries the navigation's abort signal —
+ * superseded when the next navigation starts, so in-flight guard work (an API
+ * call) can cancel itself. Actions intentionally stay signal-less: no
+ * navigation lifecycle. Prefetch guards receive the prefetch attempt's own
+ * signal (viewport leave / render teardown aborts it). */
+export type BeforeLoadArgs<P extends Record<string, string> = Record<string, string>> = Omit<LoaderArgs<P>, 'attempt'> & {
+  redirect(to: RedirectTarget): Promise<void>;
+  setContext(update: Record<string, unknown> | ((previous: Record<string, unknown>) => Record<string, unknown>)): void;
+};
 export type ScrollRestorationBehavior = 'auto' | 'smooth' | 'instant';
 export type ScrollRestorationOption = boolean | string[];
 
@@ -50,14 +59,16 @@ export type ScrollRestorationOption = boolean | string[];
  */
 export type RouteLogicOptions<P extends Record<string, string> = Record<string, string>> = {
   loader?: (args: LoaderArgs<P>) => unknown | Promise<unknown>;
-  beforeLoad?: (args: RouteHookArgs<P>) => void | Promise<void>;
+  beforeLoad?: (args: BeforeLoadArgs<P>) => void | Promise<void>;
   afterLoad?: (args: Omit<RouteHookArgs<P>, 'redirect' | 'setContext'>) => void | Promise<void>;
   actions?: (args: Omit<RouteHookArgs<P>, 'redirect'>) => Record<string, (data: Record<string, unknown>) => unknown | Promise<unknown>>;
   staleTime?: number;
-  /** Freshness window (ms) a prefetch result keeps over the route's own staleTime.
-   * `0` drops the window — the loader re-runs on the first navigation after a prefetch.
-   * Default: 30s. */
-  prefetchStaleTime?: number;
+  /** Marks routes whose data is owned by an external cache (e.g. TanStack Query
+   * passed via router context). The router cache then never claims freshness:
+   * prefetch and navigation entries alike are always stale, so the loader
+   * re-runs on every navigation and the external cache decides whether the
+   * network is hit. Inherited by children; a child can opt out with `false`. */
+  externalCache?: boolean;
   gcTime?: number;
   retry?: Retry;
   optimistic?: boolean;
@@ -110,5 +121,5 @@ export type NavigateTarget = TypedDestination | string | -1 | ({ toRaw: string }
 export type RouterRuntime = {
   navigate(target: NavigateTarget): Promise<void>;
   invalidate(target?: string | string[] | { to: RouteId; params?: Record<string, string> }, options?: { withChildren?: boolean; staleOnly?: boolean; force?: boolean }): Promise<InvalidateResult[]>;
-  prefetch(target: string | { to: RouteId; params?: Record<string, string> }): Promise<void>;
+  prefetch(target: string | { to: RouteId; params?: Record<string, string> }, signal?: AbortSignal): Promise<void>;
 };

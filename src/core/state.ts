@@ -1,6 +1,6 @@
 import { create } from "./create";
 import { WINDOW_TOP, WINDOW_LEFT } from "./constants";
-import { splitPath } from "./match";
+import { splitPath, canonicalSearch } from "./match";
 import { getRouterEnv } from "./env";
 import type {
   BlockerState,
@@ -110,7 +110,7 @@ export const updateSnapshot = (
 export const routeKey = (route: RouteNode, location: RouterLocation) => {
   const actual = splitPath(location.pathname);
   const own = route.path.endsWith("*") ? actual : actual.slice(0, splitPath(route.path).length);
-  return `${route.id}|/${own.join("/")}${location.search}`;
+  return `${route.id}|/${own.join("/")}${canonicalSearch(location.search)}`;
 };
 export const snapshot = () => snapshotRef.current;
 export type { RouteMatch };

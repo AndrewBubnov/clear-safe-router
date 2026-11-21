@@ -11,10 +11,10 @@ export const routerConfig = {
   isAnimated: false,
   animationDuration: undefined as number | undefined,
   defaultStaleTime: undefined as number | undefined,
-  /** Freshness window (ms) a prefetch keeps over a route's own staleTime.
-   * `0` disables it: the loader re-runs on the first navigation after a prefetch
-   * and the external data cache (if any) owns hover→click dedup. Default: 30s. */
-  defaultPrefetchStaleTime: undefined as number | undefined,
+  /** `externalCache` fallback for routes that don't declare it. With `true` the
+   * router cache never claims freshness (loader re-runs on every navigation);
+   * an explicit route value still wins. */
+  defaultExternalCache: undefined as boolean | undefined,
   defaultRetry: undefined as Retry | undefined,
   defaultPrefetch: "hover" as DefaultPrefetch,
   defaultHoverPrefetchDelay: 150,

@@ -259,7 +259,7 @@ import { routeTree } from './routeTree.gen';
 | `defaultStaleTime` | `number` | `0` | Default time before cached loader data is considered stale |
 | `defaultRetry` | `number \| { count, delay }` | `undefined` | Default revalidation retry policy |
 | `defaultPrefetch` | `'hover' \| 'render' \| 'viewport' \| 'none' \| 'auto'` | `'hover'` | Default prefetch strategy for `Link`s. `'auto'` resolves at hover-time: `hover` on desktop, `viewport` on mobile |
-| `defaultPrefetchStaleTime` | `number` | `30000` | How long (ms) a prefetch result stays fresh over the route's own `staleTime`. `0` drops the window: the loader re-runs on the first navigation after a prefetch (recommended for apps whose loaders delegate to an external data cache). Route-level override: `prefetchStaleTime` |
+| `defaultExternalCache` | `boolean` | `undefined` | `externalCache` fallback for routes that don't declare it: the router cache never claims freshness — the loader re-runs on every navigation and the external data cache decides whether the network is hit. Route-level override: `externalCache` |
 | `defaultHoverPrefetchDelay` | `number` | `150` | Hover delay in ms before prefetching |
 | `defaultMinLoaderDuration` | `number` | `0` | Default minimum time the pending fallback stays visible (anti-flicker) |
 | `defaultBeforeLoad` | hook | `undefined` | Runs first in the `beforeLoad` guard chain of every navigation (before all route hooks, receiving the leaf's params) |
@@ -278,13 +278,14 @@ The single export a route file provides. `id` is the file's route ID; the type l
 | `component` | `ComponentType \| LazyComponent` | The route's element. Plain functions, `React.memo`/`forwardRef` wrappers, `React.lazy` and the router's `lazy()` all work. Omitted on parent routes: an implicit `<Outlet />` renders the child automatically |
 | `layout` | `ComponentType<{ children }>` | Wraps this route's content — see [Layouts](#layouts) |
 | `loader` | `({ params, search, context, signal, attempt, location }) => unknown \| Promise<unknown>` | Loads the route's data. Runs top-down (parent first), before the route renders |
-| `beforeLoad` | `({ params, search, context, location, redirect, setContext }) => void \| Promise<void>` | Runs for **every matched route on the chain** (parent → leaf, before any loader) — see [`redirect`](#redirect-redirect-in-beforeload) |
+| `beforeLoad` | `({ params, search, context, location, signal, redirect, setContext }) => void | Promise<void>` | Runs for **every matched route on the chain** (parent → leaf, before any loader). Carries the navigation's abort signal — superseded when the next navigation starts, so in-flight guard work (an API call) can cancel itself. Prefetch guards receive the prefetch attempt's own signal. Actions intentionally have no signal — no navigation lifecycle — see [`redirect`](#redirect-redirect-in-beforeload) |
 | `afterLoad` | `({ params, search, context, location }) => void \| Promise<void>` | Runs after a successful navigation to this route |
 | `actions` | `(args) => Record<string, (data) => unknown \| Promise<unknown>>` | Route mutations — see [Route Actions](#route-actions) |
 | `pendingFallback` | `ReactNode` | Shown while this route's loader (or first data load) is pending |
 | `errorFallback` | `ComponentType<{ error }>` \| `LazyComponent` | Error view for this route's loader/`beforeLoad` errors |
 | `staleTime` | `number` | ms before cached data is stale. `Infinity` keeps it fresh until invalidated, evicted or garbage-collected |
 | `gcTime` | `number` | ms an unused cache entry survives after navigating away before being garbage-collected |
+| `externalCache` | `boolean` | Marks routes whose data is owned by an external cache: the router cache stores values but never claims freshness — prefetch and navigation entries alike are always stale, so the loader re-runs on every navigation. Declared on a section route and inherited by children; a child can opt out with `false` |
 | `retry` | `number \| { count, delay }` | Revalidation retry policy — see [Retry](#retry) |
 | `optimistic` | `boolean` | Navigate instantly using stale cached data while it revalidates |
 | `pollingInterval` | `number` | Revalidate this route's data every N ms while active (ignores `staleTime`) |
@@ -416,7 +417,7 @@ Catch-all routes take their special param:
 | `state` | `unknown` | `undefined` | Arbitrary value attached to the history entry |
 | `replace` | `boolean` | `false` | Replace the history entry instead of pushing |
 | `exact` | `boolean` | `false` | When `false`, the link is also active on nested URLs (`/settings` active at `/settings/profile`) |
-| `prefetch` | `'hover' \| 'render' \| 'viewport' \| 'none'` | `Router` config | Per-link prefetch strategy override |
+| `prefetch` | `'hover' | 'render' | 'viewport' | 'none'` | `Router` config | Per-link prefetch strategy override. `render`/`viewport` attempts are abortable (teardown/leaving aborts guards and loaders); a fired `hover` prefetch is best-effort by design |
 | `hoverPrefetchDelay` | `number` | `Router` config | Per-link hover delay override |
 | `beforeNavigate` | `() => Promise<void>` | `undefined` | Awaited before navigation starts |
 | `as` | `(props: ElementProps<T>, state: LinkState) => ReactElement` | renders `<a>` | Custom element rendering — see [Custom elements via `as`](#custom-elements-via-as) |
@@ -540,11 +541,11 @@ export const Route = createFileRoute('/products/$productId')({
 });
 ```
 
-The loader runs on every navigation (that is what loaders are for), but `queryClient.query()` resolves from the cache while the entry is fresh and awaits a refetch once `staleTime` has passed — so the external cache owns storage, eviction and staleness, while the router owns the navigation state machine: guards, pending/optimistic transitions, scroll, abort. Hover-prefetch warms the same external cache (the queryClient flows into prefetch loaders through the context), so a hover fetch and a later navigation share the network request — unless the navigation happens within the router's prefetch window (30s by default, configurable via `defaultPrefetchStaleTime`), where the loader does not run at all (see the list below).
+The loader runs on every navigation (that is what loaders are for), but `queryClient.query()` resolves from the cache while the entry is fresh and awaits a refetch once `staleTime` has passed — so the external cache owns storage, eviction and staleness, while the router owns the navigation state machine: guards, pending/optimistic transitions, scroll, abort. Hover-prefetch warms the same external cache (the queryClient flows into prefetch loaders through the context), so a hover fetch and a later navigation share the network request — unless the navigation happens within the router's prefetch window (30s by default), where the loader does not run at all (see the list below).
 
 Rules of the recipe:
 
-- **Don't set `staleTime`/`gcTime` on such routes.** With the default `staleTime: 0` the router never serves its own copy, so the external cache is the single freshness authority on every loader run. If you do set them, the router's cache starts answering without consulting the external cache — two freshness authorities on one fact, and the stale one wins. (One exception: the prefetch window — set `defaultPrefetchStaleTime={0}` to remove it, see the list below.)
+- **Flag the section `externalCache: true`.** The router cache then stores values but never claims freshness on those routes: prefetch and navigation entries alike are always stale, so the loader re-runs on every navigation and the external cache stays the single freshness authority — no route `staleTime` (even `Infinity`) or global `defaultStaleTime` can override that, and hover prefetch keeps warming the external cache (hover→click dedup simply moves to the external cache). The flag is declared once on the section route and inherited by children (a child can opt out with `false`). For mixed apps (some routes on the external cache, some on the router's own) flag sections rather than setting `defaultExternalCache` on `<Router>` — a global default would make router-cache routes re-run their loaders on every navigation too.
 - **Invalidate facts, not URLs.** From actions: `queryClient.invalidateQueries({ queryKey: ['product', id] })`. That is usually the whole job: active `useQuery` subscriptions refetch immediately, and the route snapshot catches up on the next navigation (the loader sees the stale fact and refetches). Pattern-based router `invalidate()` walks the router's own cache keys and cannot see external entries; it only re-runs loaders, so call it after invalidating the fact solely when you need the loader snapshot refreshed while staying on the page.
 - **Mutations** belong to the external cache's primitives (`useMutation`, optimistic updates with rollback); router actions stay for view-level side effects.
 - `LoaderArgs.context` is intentionally loosely typed (`Record<string, unknown>`) — instead of casting in every loader, wrap the lookup in a one-line helper that throws if the client is missing:
@@ -562,10 +563,10 @@ export const getQueryClient = (context: Record<string, unknown>): QueryClient =>
 
 What stops working for routes whose data lives in an external cache — these are consequences of the external cache owning the data, not defects:
 
-- `staleTime`, `gcTime`, `optimistic` still operate on the router's own copy of the loader value — they just no longer decide the freshness of external facts. A route `staleTime` would let the router serve that copy on revisits without consulting the external cache (two freshness authorities — don't set it); `gcTime` still evicts the copy from memory after you leave; `optimistic` still renders the cached copy instantly while the loader revalidates — as fresh as the last loader run, not as the external cache.
+- `staleTime`, `gcTime`, `optimistic` still operate on the router's own copy of the loader value — they just no longer decide the freshness of external facts. On an `externalCache` route a route `staleTime` cannot make the router serve that copy (the flag wins — even `Infinity` is ignored); `gcTime` still evicts the copy from memory after you leave; `optimistic` still renders the cached copy instantly while the loader revalidates — as fresh as the last loader run, not as the external cache.
 - `pollingInterval` still re-runs the loader on schedule, but the refetch decision belongs to the external cache (`query()` answers from cache while the entry is fresh); TanStack's own `refetchInterval` is the idiomatic polling there.
-- The "prefetched = fresh for 30 seconds" window still applies by default — and it is the one place the router cache outranks the external cache. Within it the first navigation reuses the router's prefetched snapshot and the loader does not run, so the external cache is not consulted: if the fact was invalidated between hover and click, the prefetched (now stale) snapshot wins. The fix is one prop, not disabling prefetch: pass `defaultPrefetchStaleTime={0}` and the window disappears while hover prefetch keeps warming the external cache — hover→click dedup simply moves to the external cache. For mixed apps (some routes on the external cache, some on the router's) use the route-level `prefetchStaleTime` override instead.
-- `useCacheSnapshot()` / `<CacheVisualizer>` don't see external entries; data observability moves to TanStack Devtools.
+- On unflagged routes the "prefetched = fresh for 30 seconds" window still applies — and it is the one place the router cache can outrank the external cache: within the window the first navigation reuses the router's prefetched snapshot and the loader does not run, so the external cache is not consulted (if the fact was invalidated between hover and click, the prefetched snapshot wins). Flagging the route `externalCache: true` removes the window there, while hover prefetch keeps warming the external cache.
+- `useCacheSnapshot()` doesn't see external entries; data observability moves to TanStack Devtools.
 - `resetRouterState()` doesn't clear the external cache — its lifecycle belongs to the app.
 
 A live demo of this recipe lives in the playground: `/playground/cache/external/CLR` (see `playground/routes/playground/cache/external/$extId.tsx` and `playground/pages/ExternalCachePage.tsx`).

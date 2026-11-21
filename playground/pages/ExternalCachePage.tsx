@@ -126,10 +126,11 @@ const ExternalCachePage = () => {
           param differs. The router sees three different navigations; the
           external cache sees three different facts (one per symbol). The
           counter below is this symbol&apos;s fetch count — it travels with you
-          across symbols. This section opts out of the router&apos;s 30-second
-          prefetch window (<code>prefetchStaleTime: 0</code>): hover prefetch
-          still warms the external cache, but the loader re-runs on every
-          navigation and the external cache decides whether a fetch happens.
+          across symbols. This section is flagged <code>externalCache: true</code>
+          (inherited from the section route): the router cache never claims
+          freshness here — hover prefetch still warms the external cache, but
+          the loader re-runs on every navigation and the external cache decides
+          whether a fetch happens.
           Try it: open CLR, then VITE — each first visit
           fetches. Now open CLR again within <code>5 seconds</code> — the loader
           still runs, but the counter does not move: the cached value renders

@@ -35,7 +35,13 @@ export const Link = (props: LinkProps) => {
   };
   const strategy: 'hover' | 'render' | 'viewport' | 'none' = resolveStrategy();
   useEffect(() => {
-    if (strategy === 'render') void routerRuntime.prefetch(targetPath);
+    if (strategy === 'render') {
+      // The effect owns the render-prefetch attempt: teardown (unmount or a
+      // changed target) aborts the in-flight guard/loader work.
+      const controller = new AbortController();
+      void routerRuntime.prefetch(targetPath, controller.signal);
+      return () => controller.abort();
+    }
     if (strategy !== 'viewport') return;
     const element = anchorRef.current;
     if (!element || typeof IntersectionObserver === 'undefined') return;
@@ -48,7 +54,9 @@ export const Link = (props: LinkProps) => {
       dwellTimer = window.setTimeout(() => {
         const attempt = new AbortController();
         controller = attempt;
-        void routerRuntime.prefetch(targetPath).then(() => { if (!attempt.signal.aborted) observer.disconnect(); });
+        // The attempt's signal rides through guards and loaders: leaving the
+        // viewport aborts the prefetch mid-flight.
+        void routerRuntime.prefetch(targetPath, attempt.signal).then(() => { if (!attempt.signal.aborted) observer.disconnect(); });
       }, 250);
     });
     observer.observe(element);

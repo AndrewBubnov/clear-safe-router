@@ -10,6 +10,17 @@ const decodeSegment = (value: string) => {
 };
 
 export const normalizeSearch = (search: string) => search && !search.startsWith('?') ? `?${search}` : search;
+/** Canonical search for cache keys only (the URL itself is left as authored):
+ * name-then-value stable sort so `?tag=a&tag=b` and `?tag=b&tag=a` share one
+ * cache entry, empty search collapses to ''. */
+export const canonicalSearch = (search: string) => {
+  if (!search || search === '?') return '';
+  const entries = [...new URLSearchParams(search).entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], 'en') || a[1].localeCompare(b[1], 'en'));
+  const query = new URLSearchParams();
+  entries.forEach(([key, value]) => query.append(key, value));
+  return `?${query.toString()}`;
+};
 export const splitPath = (value: string) => value.split('/').filter(Boolean);
 export const splitLocation = (value: string) => {
   const index = value.indexOf('?');

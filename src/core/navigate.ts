@@ -141,6 +141,10 @@ export const loadLocation = async (
             search: Object.fromEntries(new URLSearchParams(location.search)),
             context: contextStore.getState(),
             location,
+            // The navigation owns the signal (superseded by the next navigation),
+            // so in-flight guard work can cancel itself. The seq check below is
+            // the only supersede decision — a dead guard's redirect is discarded.
+            signal: controller.signal,
             setContext: (update) => {
               contextStore.setState(
                 typeof update === "function"
@@ -296,8 +300,15 @@ export const loadLocation = async (
  * guards may call setContext (e.g. preparing a token for the loader), and that
  * value flows into the prefetch loaders — without ever touching the global
  * context store, so a parallel real navigation is unaffected.
+ * Guards receive the prefetch attempt's own signal: a viewport/render prefetch
+ * aborted from the outside cancels in-flight guard work too. There is no
+ * supersede chain — the caller's signal is the whole lifecycle.
  * Keep the hook-argument shape in sync with the guard phase of `loadLocation`. */
-export const guardsAllowPrefetch = async (matches: RouteMatch[], location: RouterLocation): Promise<{ allowed: boolean; context: Record<string, unknown> }> => {
+export const guardsAllowPrefetch = async (
+  matches: RouteMatch[],
+  location: RouterLocation,
+  signal: AbortSignal,
+): Promise<{ allowed: boolean; context: Record<string, unknown> }> => {
   if (matches.length === 0) return { allowed: true, context: { ...contextStore.getState() } };
   const leaf = matches.at(-1)!;
   const hooks: { hook: BeforeLoadHook; params: Record<string, string> }[] = [];
@@ -314,6 +325,7 @@ export const guardsAllowPrefetch = async (matches: RouteMatch[], location: Route
         search: Object.fromEntries(new URLSearchParams(location.search)),
         context: localContext,
         location,
+        signal,
         setContext: (update) => {
           localContext =
             typeof update === "function"
