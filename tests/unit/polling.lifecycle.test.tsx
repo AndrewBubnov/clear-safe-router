@@ -73,4 +73,24 @@ describe('polling lifecycle', () => {
     await sleep(200);
     expect(pollingLoader.mock.calls.length).toBe(callsAtUnmount);
   });
+
+  it('mirrors polled data into the navigation snapshot without waking snapshot listeners', async () => {
+    let tick = 0;
+    const pollingLoader = vi.fn(async () => `tick-${++tick}`);
+    const tree = root([node('/live', '/live', { loader: pollingLoader, pollingInterval: 50, staleTime: 0, component: () => <p>tick</p> })]);
+    renderAt('/live', tree);
+    await screen.findByText('tick');
+    const { snapshot, subscribe } = await import('../../src/core/state');
+    const off = subscribe(() => {});
+    try {
+      await sleep(200);
+      const key = '/live|/live';
+      // The snapshot's data slice keeps up with the polled value in place —
+      // the same Map identity, so snapshot subscribers do not re-render, but
+      // `snapshot().data` never diverges from the data store.
+      expect(snapshot().data.get(key)).toBe(`tick-${tick}`);
+    } finally {
+      off();
+    }
+  });
 });

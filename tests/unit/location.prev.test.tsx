@@ -71,4 +71,19 @@ describe('location.prevLocation', () => {
     await navigate('/b');
     expect(seen).toEqual({ pathname: '/a', search: '' });
   });
+
+  it('a search-only update is committed: the next navigation sees the new search in prevLocation', async () => {
+    const { updateSearchParams } = await import('../../src/runtime');
+    const tree = root([
+      node('/a', '/a', { component: () => <p>a</p> }),
+      node('/b', '/b', { component: () => <p>b</p> }),
+    ]);
+    setRouterConfig(tree);
+    window.history.replaceState(null, '', '/a');
+    render(<Router routes={tree} />);
+    await navigate('/a?x=1');
+    await act(async () => { updateSearchParams('x', '2'); });
+    await navigate('/b');
+    expect(snapshot().location.prevLocation).toEqual({ pathname: '/a', search: '?x=2' });
+  });
 });

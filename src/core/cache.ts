@@ -213,8 +213,14 @@ export const runLoader = (
   flight.promise = work(flight.controller.signal).finally(() => {
     signal.removeEventListener("abort", onAbort);
     flight.controller.signal.removeEventListener("abort", onFlightAbort);
-    if (flights.get(key)?.token === token) flights.delete(key);
-    emit();
+    // Only a flight that is still the owner cleans up and notifies: a flight
+    // superseded by a navigation was already replaced (the new flight emits),
+    // and an aborted one changed nothing — waking subscribers here would be a
+    // spurious no-op emit.
+    if (flights.get(key)?.token === token) {
+      flights.delete(key);
+      emit();
+    }
   });
   return flight.promise;
 };
@@ -241,6 +247,8 @@ export const scheduleGc = (matches: RouteMatch[], location: RouterLocation) => {
     entry.gcExpiresAt = Date.now() + entry.gcTime;
     entry.timer = setTimeout(() => {
       cache.delete(key);
+      // The snapshot must not keep listing an entry that no longer exists.
+      syncCacheSnapshot();
     }, entry.gcTime);
   }
 };

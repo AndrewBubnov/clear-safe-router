@@ -60,7 +60,25 @@ export const Router = ({
       revalidateOnReconnect,
       enableCacheSnapshot,
     });
-  });
+    // Only re-apply when a prop actually changes; running after every render
+    // would overwrite host config (e.g. a `configureRouter` call made between
+    // renders) with the same values for no reason.
+  }, [
+    isAnimated,
+    animationDuration,
+    defaultRetry,
+    defaultStaleTime,
+    defaultExternalCache,
+    defaultPrefetch,
+    defaultHoverPrefetchDelay,
+    defaultMinLoaderDuration,
+    defaultBeforeLoad,
+    defaultAfterLoad,
+    defaultScrollRestorationBehavior,
+    revalidateOnFocus,
+    revalidateOnReconnect,
+    enableCacheSnapshot,
+  ]);
   useEffect(() => {
     if (enableCacheSnapshot) syncCacheSnapshot();
   }, [enableCacheSnapshot]);

@@ -279,7 +279,7 @@ The single export a route file provides. `id` is the file's route ID; the type l
 | `layout` | `ComponentType<{ children }>` | Wraps this route's content — see [Layouts](#layouts) |
 | `loader` | `({ params, search, context, signal, attempt, location }) => unknown \| Promise<unknown>` | Loads the route's data. Runs top-down (parent first), before the route renders |
 | `beforeLoad` | `({ params, search, context, location, signal, redirect, setContext }) => void | Promise<void>` | Runs for **every matched route on the chain** (parent → leaf, before any loader). Carries the navigation's abort signal — superseded when the next navigation starts, so in-flight guard work (an API call) can cancel itself. Prefetch guards receive the prefetch attempt's own signal. Actions intentionally have no signal — no navigation lifecycle — see [`redirect`](#redirect-redirect-in-beforeload) |
-| `afterLoad` | `({ params, search, context, location }) => void \| Promise<void>` | Runs after a successful navigation to this route |
+| `afterLoad` | `({ params, search, context, location }) => void \| Promise<void>` | Runs after a successful navigation to this route. `location` matches the committed snapshot, including `prevLocation`. Failures are logged with the route id, they do not fail the navigation |
 | `actions` | `(args) => Record<string, (data) => unknown \| Promise<unknown>>` | Route mutations — see [Route Actions](#route-actions) |
 | `pendingFallback` | `ReactNode` | Shown while this route's loader (or first data load) is pending |
 | `errorFallback` | `ComponentType<{ error }>` \| `LazyComponent` | Error view for this route's loader/`beforeLoad` errors |
@@ -814,6 +814,8 @@ await invalidate('/about', { force: false });       // cache-only (never fetch u
 ```
 
 Returns `{ path, data, error }[]` — one entry per revalidated route. A successful revalidation of the active route also resets its status to `active`, so recovering from an error page is just `await invalidate()`. Pattern targets are always cache-only — they never fetch the pattern itself.
+
+Each target revalidates the **whole matched chain** at its location — parent layout loaders first, then the leaf — since a layout loader has its own cache key and its data is part of the page. A route action revalidates the same way (it invalidates its own path with `force: true`).
 
 ### `useCacheSnapshot()`
 

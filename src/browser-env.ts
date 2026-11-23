@@ -28,21 +28,46 @@ export const browserEnv: RouterEnv = {
       );
     try {
       const transition = document.startViewTransition(write);
-      transition.finished.catch(() => {});
+      // The CSS variable is a one-transition override: reset it when the
+      // transition settles so later transitions use their own duration.
+      const reset = () => {
+        if (durationMs !== undefined)
+          document.documentElement.style.removeProperty('--pg-transition-duration');
+      };
+      transition.finished.then(reset, reset);
     } catch {
+      if (durationMs !== undefined)
+        document.documentElement.style.removeProperty('--pg-transition-duration');
       write();
     }
   },
-  scrollTo: (options) => window.scrollTo(options),
+  scrollTo: (options) => {
+    // `behavior: 'instant'` is a recent ScrollBehavior value: older engines
+    // reject the whole call silently — fall back to a plain jump.
+    if ((options as { behavior?: string }).behavior === 'instant') {
+      const { behavior: _behavior, ...rest } = options as { behavior?: string; top?: number; left?: number };
+      void _behavior;
+      window.scrollTo(rest);
+      return;
+    }
+    window.scrollTo(options);
+  },
   scrollPos: () => ({
     top: document.scrollingElement?.scrollTop ?? window.scrollY,
     left: document.scrollingElement?.scrollLeft ?? window.scrollX,
   }),
   elementById: (id) => document.getElementById(id),
-  scrollElementTo: (element, options) =>
+  scrollElementTo: (element, options) => {
     // The element contract is structural; in a browser it is always a real
-    // Element, which has `scrollTo`.
-    (element as HTMLElement).scrollTo(options as ScrollToOptions),
+    // Element, which has `scrollTo`. Same 'instant' fallback as window scrollTo.
+    if ((options as { behavior?: string }).behavior === 'instant') {
+      const { behavior: _behavior, ...rest } = options as { behavior?: string; top?: number; left?: number };
+      void _behavior;
+      (element as HTMLElement).scrollTo(rest);
+      return;
+    }
+    (element as HTMLElement).scrollTo(options as ScrollToOptions);
+  },
   elementScrollPos: (element) => ({
     top: (element as HTMLElement).scrollTop,
     left: (element as HTMLElement).scrollLeft,

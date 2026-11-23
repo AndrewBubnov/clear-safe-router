@@ -46,7 +46,14 @@ export const clearSafeRouter = (options: TypedRouterPluginOptions = {}): Plugin 
     }
   };
 
-  const isRouteFile = (file: string) => file === routeDir || file.startsWith(routeDir + path.sep);
+  // Vite watcher events carry forward slashes even on Windows, while routeDir
+  // is a native path — compare in posix form on both sides.
+  const toPosix = (value: string) => value.replace(/\\/g, '/');
+  const isRouteFile = (file: string) => {
+    const posixFile = toPosix(file);
+    const posixDir = toPosix(routeDir);
+    return posixFile === posixDir || posixFile.startsWith(`${posixDir}/`);
+  };
 
   return {
     name: 'clear-safe-router:file-routes',

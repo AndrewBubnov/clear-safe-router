@@ -217,8 +217,8 @@ describe('navigate parity (original navigate.test.ts)', () => {
     await expect(navigate('/test')).resolves.toBeUndefined();
     expect(afterLoad).toHaveBeenCalledOnce();
     expect(defaultAfterLoad).toHaveBeenCalledOnce();
-    expect(consoleError).toHaveBeenCalledWith('[clear-safe-router] afterLoad failed:', routeError);
-    expect(consoleError).toHaveBeenCalledWith('[clear-safe-router] afterLoad failed:', defaultError);
+    expect(consoleError).toHaveBeenCalledWith('[clear-safe-router] afterLoad failed for /test:', routeError);
+    expect(consoleError).toHaveBeenCalledWith('[clear-safe-router] afterLoad failed for /test:', defaultError);
   });
 
   it('calls defaultAfterLoad', async () => {

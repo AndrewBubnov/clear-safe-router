@@ -395,4 +395,21 @@ describe('Link parity: props, state and navigation guards (original Link.test.ts
     await screen.findByText('About page');
     expect(window.location.pathname).toBe('/about');
   });
+
+  it('a missing route parameter degrades to a disabled link instead of crashing', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tree = root([node('/users/$id', '/users/:id', { component: () => <p>User</p> })]);
+    renderAt('/', tree);
+    render(<RawLink to="/users/$id" params={{}} data-testid="broken-link">Broken</RawLink>);
+    const link = screen.getByTestId('broken-link');
+    expect(link.getAttribute('href')).toBeNull();
+    expect(link.getAttribute('aria-disabled')).toBe('true');
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('cannot resolve target'),
+      expect.anything(),
+    );
+    await act(async () => { fireEvent.click(link); });
+    expect(window.location.pathname).toBe('/');
+    warn.mockRestore();
+  });
 });

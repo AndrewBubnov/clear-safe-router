@@ -30,6 +30,7 @@ describe('redirect robustness', () => {
     await waitFor(() => expect(snapshot().status).toBe('error'), { timeout: 5000 });
     const error = snapshot().errors.get('/loop');
     expect(error).toBeInstanceOf(Error);
+    expect(error?.name).toBe('RedirectLoopError');
     expect(error?.message).toContain('redirect loop');
   });
 

@@ -54,7 +54,12 @@ export const activeControllerRef: { current: AbortController | undefined } = {
 /** When a popstate is reverted with history.forward() (blocker), this holds the
  * URL the revert should land on. Only a popstate landing on exactly that URL is
  * swallowed — a real user navigation in between is processed normally. */
-export const suppressPopstateRef: { current: string | null } = { current: null };
+/** Popstate events expected to be the blocker's own revert (`forward()`): each
+ * blocked popstate queues the URL it should land back on. A queued URL is
+ * consumed only when a popstate actually lands there — a different event (the
+ * user racing another history move) is processed normally instead of being
+ * swallowed by a string match. */
+export const suppressPopstateRef: { current: string[] } = { current: [] };
 
 // ——— subscriptions ———
 export const listeners = new Set<() => void>();

@@ -87,7 +87,7 @@ export type LazyModule = { readonly [LAZY_MARKER]: true; importFn: () => Promise
 export type RouteNode = { id: string; options: RouteLogicOptions<any> & { [viewField: string]: unknown }; path: string; children: RouteNode[] };
 /** Generic over the route node so the adapter can instantiate with its own
  * richer RouteNode (view fields + hooks) without casts at every call site. */
-export type RouteMatch<R extends RouteNode = RouteNode> = { route: R; params: Record<string, string>; key: string };
+export type RouteMatch<R extends RouteNode = RouteNode> = { route: R; params: Record<string, string> };
 export type LoaderState = { data: unknown; loaderError: Error | null; beforeLoadError: Error | null };
 export type RouterSnapshot<R extends RouteNode = RouteNode> = { location: RouterLocation; status: RouteStatus; matches: RouteMatch<R>[]; data: Map<string, unknown>; errors: Map<string, Error> };
 

@@ -15,7 +15,7 @@ import {
   snapshot as snapshotGetter,
   setSnapshot,
 } from "./state";
-import { emit, isCacheFresh, runLoader, scheduleGc } from "./cache";
+import { emit, isCacheFresh, runLoader, scheduleGc, syncCacheSnapshot } from "./cache";
 import { captureScroll } from "./scroll";
 import {
   formatSearch,
@@ -41,6 +41,15 @@ export { REDIRECT_LIMIT };
 export class RedirectSignal extends Error {
   constructor(public target: RouterLocation) {
     super(`Redirect to ${target.pathname}${target.search}`);
+  }
+}
+/** Raised when a guard redirect chain exceeds REDIRECT_LIMIT — a redirect loop.
+ * Deliberately NOT a RedirectSignal: the guard chain must not swallow it into a
+ * route error; it surfaces as an explicit, greppable failure. */
+export class RedirectLoopError extends Error {
+  constructor(pathname: string) {
+    super(`Redirect chain exceeded ${REDIRECT_LIMIT} hops — possible redirect loop at "${pathname}"`);
+    this.name = 'RedirectLoopError';
   }
 }
 export const commit = (
@@ -166,9 +175,9 @@ export const loadLocation = async (
                       state: to.state,
                     };
               if ((options.redirectDepth ?? 0) >= REDIRECT_LIMIT)
-                throw new Error(
-                  `[clear-safe-router] Redirect chain exceeded ${REDIRECT_LIMIT} hops — possible redirect loop at "${location.pathname}"`,
-                );
+                // Not a RedirectSignal: the guard chain rethrows it so the loop
+                // is an explicit failure, not a silent route error.
+                throw new RedirectLoopError(location.pathname);
               // Throws to interrupt the hook body; the chain below catches it.
               throw new RedirectSignal(target);
             },
@@ -176,6 +185,10 @@ export const loadLocation = async (
         } catch (error) {
           if (error instanceof RedirectSignal) {
             redirected = error.target;
+          } else if (error instanceof RedirectLoopError) {
+            // Rethrow: the outer catch reports the loop explicitly instead of
+            // folding it into a guard failure.
+            throw error;
           } else {
             beforeLoadErrors.set(match.route.id, toError(error));
             errors.set(match.route.id, toError(error));
@@ -198,7 +211,6 @@ export const loadLocation = async (
       }
       // Phase 2 — loaders, only when every guard on the chain passed.
       if (!guardFailed) {
-    const revalidated: RouteMatch[] = [];
     for (const match of matches) {
       if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
       try {
@@ -224,7 +236,6 @@ export const loadLocation = async (
           data.set(routeKey(match.route, location), value);
         loaderErrors.delete(match.route.id);
         beforeLoadErrors.delete(match.route.id);
-        revalidated.push(match);
       } catch (error) {
         loaderErrors.set(match.route.id, toError(error));
         errors.set(match.route.id, toError(error));
@@ -263,10 +274,12 @@ export const loadLocation = async (
             params: afterLoadLeaf.params,
             search: Object.fromEntries(new URLSearchParams(location.search)),
             context: contextStore.getState(),
-            location,
+            // Same object as the committed snapshot's location, so afterLoad
+            // sees `prevLocation` like every other hook argument.
+            location: nextLocation,
           });
         } catch (error) {
-          console.error("[clear-safe-router] afterLoad failed:", error);
+          console.error(`[clear-safe-router] afterLoad failed for ${afterLoadLeaf.route.id}:`, error);
         }
       }
     }
@@ -274,6 +287,8 @@ export const loadLocation = async (
     scheduleGc(matches, location);
   } catch (error) {
     if (seq !== navigationSeqRef.current || controller.signal.aborted) return;
+    if (error instanceof RedirectLoopError)
+      console.error(`[clear-safe-router] ${error.message}`);
     const fallback = matches.at(-1);
     if (fallback) errors.set(fallback.route.id, toError(error));
     setSnapshot({ location: nextLocation, status: "error", matches, data, errors });
@@ -379,13 +394,18 @@ export const schedulePolling = (
           }` !== `${location.pathname}${location.search}`
         )
           return;
-        // Only the data slice changes: route/status/location subscribers must not re-render.
+        // Only the data slice changes: data subscribers re-render from their own
+        // store; the snapshot listeners may be woken by the loader's own emit,
+        // but the snapshot object identity is unchanged so route/status/location
+        // subscribers do not re-render. Catch the snapshot's data slice up in
+        // place (same Map identity) so it never diverges from `dataStore`.
         dataStore.setState((previous) => {
           const next = new Map(previous);
           next.set(routeKey(target.route, location), value);
           return next;
         });
-        emit();
+        snapshotGetter().data.set(routeKey(target.route, location), value);
+        syncCacheSnapshot();
       })
       .catch((error) => console.error("[clear-safe-router] polling failed:", error));
   }, target.route.options.pollingInterval);

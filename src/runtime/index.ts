@@ -51,12 +51,28 @@ if (
 
 // Pure config wiring, not environment detection: the adapter prefetch hook
 // must be present before any Link/prefetch call, including tests that drive
-// `routerRuntime.prefetch` without rendering `<Router>`. Idempotent by design.
-routerConfig.onPrefetch = (matches: RouteMatch[]) => {
+// `routerRuntime.prefetch` without rendering `<Router>`.
+const warmLazyChunks = ((matches: RouteMatch[]) => {
   const leafComponent = (matches.at(-1)?.route.options as { component?: unknown }).component;
   if (leafComponent && typeof leafComponent === 'object' && LAZY_MARKER in leafComponent)
     void (leafComponent as LazyModule).importFn();
-};
+}) as ((matches: RouteMatch[]) => void) & { __warmsLazyChunks?: true };
+warmLazyChunks.__warmsLazyChunks = true;
+// Chain instead of assign: a host that configured its own `onPrefetch` before
+// importing the adapter keeps it. The marker makes a module re-evaluation
+// (HMR) idempotent instead of stacking the hook.
+const existingOnPrefetch = routerConfig.onPrefetch as typeof warmLazyChunks | undefined;
+if (existingOnPrefetch?.__warmsLazyChunks) {
+  // already wired
+} else if (existingOnPrefetch) {
+  const hostHook = existingOnPrefetch;
+  routerConfig.onPrefetch = (matches) => {
+    hostHook(matches);
+    warmLazyChunks(matches);
+  };
+} else {
+  routerConfig.onPrefetch = warmLazyChunks;
+}
 // The dev signal is an adapter concern: the core stays Vite-free, the adapter
 // reads the bundler flag in its own module scope.
 routerConfig.warnOnUnmatchedRoutes = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);

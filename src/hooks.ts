@@ -80,11 +80,16 @@ export const useBlocker = (
     };
   }, []);
   // Runs after every commit so arbitrary closure state (form dirtiness, context…)
-  // stays reactive, but never inside render. The global charged state is owned by
-  // the most recently mounted hook; when that hook unmounts while charged, it
-  // releases the blocker so navigation is not stuck.
+  // stays reactive, but never inside render. Ownership is fixed at MOUNT order,
+  // not per-render: a deps-less effect would re-run on every commit of either
+  // blocker and flip ownership to whichever hook rendered last (a re-render of
+  // a non-owner would steal it, leaving the true owner unable to release).
+  // The most recently mounted hook owns the global charged state; when it
+  // unmounts while charged, it releases the blocker so navigation is not stuck.
+  const ownerIdRef = useRef(-1);
+  if (ownerIdRef.current === -1) ownerIdRef.current = ++blockerOwnerSeq;
   useLayoutEffect(() => {
-    const ownerId = ++blockerOwnerSeq;
+    const ownerId = ownerIdRef.current;
     blockerOwner = ownerId;
     const shouldBlock = !!fnRef.current({ location, nextLocation, context });
     if (armedRef.current !== shouldBlock) {

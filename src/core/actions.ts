@@ -33,6 +33,7 @@ import {
   isCacheFresh,
   runLoader,
   clearCacheAndFlights,
+  scheduleGc,
 } from "./cache";
 import {
   matchRoutes,
@@ -44,7 +45,12 @@ import {
   parseCacheKey,
   splitUrl,
 } from "./match";
-import { loadLocation, stopPolling, guardsAllowPrefetch } from "./navigate";
+import {
+  loadLocation,
+  stopPolling,
+  guardsAllowPrefetch,
+  schedulePolling,
+} from "./navigate";
 import { captureScroll } from "./scroll";
 import { routerConfig } from "./config";
 import { getRouterEnv } from "./env";
@@ -123,11 +129,17 @@ export const invalidate = async (
   for (const location of locations.values()) {
     const matches = matchRoutes(location.pathname, location, routesRef.current);
     const leaf = matches.at(-1);
-    // Original semantics: a concrete path invalidates its matched route only;
-    // withChildren widens the cached-path match to a prefix, so every descendant
-    // URL is revalidated at its own location with its own params.
     if (!leaf) continue;
-    for (const match of [leaf]) {
+    // Revalidate the whole matched chain (parent layouts first, leaf last): a
+    // parent layout loader has its own cache key, and data it provides is part
+    // of the page being invalidated. Loaderless non-leaf matches have nothing
+    // to revalidate; the leaf keeps original no-op semantics (it yields a
+    // result entry even without a loader). `seen` dedups parent keys shared by
+    // several withChildren locations. `withChildren` widens the cached-path
+    // match to a prefix, so every descendant URL is revalidated at its own
+    // location with its own params.
+    for (const match of matches) {
+      if (match !== leaf && !match.route.options.loader) continue;
       const key = routeKey(match.route, location);
       if (seen.has(key)) continue;
       seen.add(key);
@@ -258,10 +270,16 @@ export const prefetch = (
   });
 export const handlePopState = () => {
   const env = getRouterEnv();
-  if (suppressPopstateRef.current) {
-    const expected = suppressPopstateRef.current;
-    suppressPopstateRef.current = null;
-    if (env.currentUrl() === expected) return;
+  if (suppressPopstateRef.current.length > 0) {
+    const expected = suppressPopstateRef.current[0]!;
+    if (env.currentUrl() === expected) {
+      suppressPopstateRef.current.shift();
+      return;
+    }
+    // A different URL arrived while a revert was pending — the pending revert
+    // is stale (the user raced another history move). Drop it and process the
+    // real event.
+    suppressPopstateRef.current = [];
   }
 
   // Leaving the current page via history buttons must save its scroll too —
@@ -277,7 +295,9 @@ export const handlePopState = () => {
       blockerStateStore.setState("blocked");
       blockedTargetStore.setState(location);
     }
-    suppressPopstateRef.current = `${snapshot().location.pathname}${snapshot().location.search}`;
+    suppressPopstateRef.current.push(
+      `${snapshot().location.pathname}${snapshot().location.search}`,
+    );
     env.forward();
     emitSnapshot();
     return;
@@ -329,7 +349,7 @@ export const resetRouterState = () => {
   blockerStateStore.setState("unblocked");
   blockedTargetStore.setState(null);
   cacheSnapshotStore.setState([]);
-  suppressPopstateRef.current = null;
+  suppressPopstateRef.current = [];
   routesRef.current = undefined;
   navigationSeqRef.current++;
   committedLocationRef.current = undefined;
@@ -338,7 +358,9 @@ export const resetRouterState = () => {
     status: "idle",
     matches: [],
     data: new Map(),
-    errors: routeErrors,
+    // Own copy: aliasing the live `routeErrors` map would let later `errors.set()`
+    // mutate the reset snapshot without `updateSnapshot`/emit.
+    errors: new Map(),
   };
   dataStore.setState(new Map());
   stopPolling();
@@ -384,25 +406,32 @@ export const updateSearchParams = (
     `${location.pathname}${location.search}`,
     location.state,
   );
-  updateSnapshot((previous) => ({ ...previous, location }));
+  // A search-only replace is a committed navigation: the next real navigation
+  // must see it as its `prevLocation`, not the pre-replace URL.
+  committedLocationRef.current = location;
   // Keep the data rendered for the active matches: a search-only update must not
   // blank the page until the next invalidation refetches with the new search.
+  const data = new Map(dataStore.getState());
   if (
     `${previousLocation.pathname}${previousLocation.search}` !==
     `${location.pathname}${location.search}`
   ) {
-    dataStore.setState((previous) => {
-      const next = new Map(previous);
-      for (const match of snapshot().matches) {
-        const oldKey = routeKey(match.route, previousLocation);
-        const newKey = routeKey(match.route, location);
-        if (oldKey === newKey || !previous.has(oldKey)) continue;
-        next.set(newKey, previous.get(oldKey));
-        next.delete(oldKey);
-      }
-      return next;
-    });
+    for (const match of snapshot().matches) {
+      const oldKey = routeKey(match.route, previousLocation);
+      const newKey = routeKey(match.route, location);
+      if (oldKey === newKey || !data.has(oldKey)) continue;
+      data.set(newKey, data.get(oldKey));
+      data.delete(oldKey);
+    }
   }
+  dataStore.setState(data);
+  updateSnapshot((previous) => ({ ...previous, location, data }));
+  // The URL changed under the active matches: re-arm polling for the new
+  // location (the old timer would no-op-forever on its stale URL check) and
+  // orphan the old cache keys so GC/evict can reclaim them.
+  const matches = snapshot().matches;
+  schedulePolling(matches, location);
+  scheduleGc(matches, location);
   emitSnapshot();
 };
 export const submitRouteAction = async (

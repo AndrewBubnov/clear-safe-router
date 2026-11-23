@@ -100,8 +100,6 @@ export type RouterProps = {
    * never claims freshness — the loader re-runs on every navigation and the
    * external data cache decides whether the network is hit. */
   defaultExternalCache?: boolean;
-  defaultLoaderFallback?: ReactNode;
-  defaultErrorElement?: ReactNode;
   defaultPrefetch?: DefaultPrefetch;
   defaultHoverPrefetchDelay?: number;
   defaultMinLoaderDuration?: number;

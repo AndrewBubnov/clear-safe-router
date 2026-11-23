@@ -22,10 +22,24 @@ export const Link = (props: LinkProps) => {
   };
   const className = classNameInput as string | ((state: LinkState) => string) | undefined;
   const style = styleInput as CSSProperties | ((state: LinkState) => CSSProperties) | undefined;
-  const resolved = resolveTarget({ to: to as string | undefined, toRaw, params, search, state });
-  const targetPath = `${resolved.pathname}${resolved.search}`;
+  const hoverTimeout = useRef(0);
+  const paramWarnedRef = useRef(false);
+  // A missing route parameter must not crash the whole tree in render: Link
+  // degrades to a disabled anchor and warns instead of throwing.
+  const resolved = (() => {
+    try {
+      return resolveTarget({ to: to as string | undefined, toRaw, params, search, state });
+    } catch (error) {
+      if (!paramWarnedRef.current) {
+        paramWarnedRef.current = true;
+        console.warn(`[clear-safe-router] Link: cannot resolve target${to ? ` "${to}"` : ''} — rendering a disabled link:`, error);
+      }
+      return null;
+    }
+  })();
+  const targetPath = resolved ? `${resolved.pathname}${resolved.search}` : "";
   const anchorRef = useRef<HTMLAnchorElement>(null);
-  const { isActive, isPending } = useLinkState(resolved.pathname, resolved.search ?? '', exact);
+  const { isActive, isPending } = useLinkState(resolved?.pathname ?? '', resolved?.search ?? '', exact);
   const resolveStrategy = (): 'hover' | 'render' | 'viewport' | 'none' => {
     if (linkPrefetch !== 'auto') return linkPrefetch as 'hover' | 'render' | 'viewport' | 'none';
     // 'auto' resolves against the live config so a changed defaultPrefetch
@@ -35,14 +49,14 @@ export const Link = (props: LinkProps) => {
   };
   const strategy: 'hover' | 'render' | 'viewport' | 'none' = resolveStrategy();
   useEffect(() => {
-    if (strategy === 'render') {
+    if (!resolved || strategy === 'render') {
       // The effect owns the render-prefetch attempt: teardown (unmount or a
       // changed target) aborts the in-flight guard/loader work.
       const controller = new AbortController();
       void routerRuntime.prefetch(targetPath, controller.signal);
       return () => controller.abort();
     }
-    if (strategy !== 'viewport') return;
+    if (!resolved || strategy !== 'viewport') return;
     const element = anchorRef.current;
     if (!element || typeof IntersectionObserver === 'undefined') return;
     let dwellTimer = 0;
@@ -55,30 +69,39 @@ export const Link = (props: LinkProps) => {
         const attempt = new AbortController();
         controller = attempt;
         // The attempt's signal rides through guards and loaders: leaving the
-        // viewport aborts the prefetch mid-flight.
-        void routerRuntime.prefetch(targetPath, attempt.signal).then(() => { if (!attempt.signal.aborted) observer.disconnect(); });
+        // viewport aborts the prefetch mid-flight. The observer stays connected
+        // — a denied prefetch (guards said no) must be retryable on the next
+        // dwell instead of silently never firing again.
+        void routerRuntime.prefetch(targetPath, attempt.signal);
       }, 250);
     });
     observer.observe(element);
     return () => { window.clearTimeout(dwellTimer); controller?.abort(); observer.disconnect(); };
   }, [strategy, targetPath]);
   useEffect(() => {
-    if (strategy !== 'hover') return;
+    if (!resolved || strategy !== 'hover') return;
     return () => { if (hoverTimeout.current) window.clearTimeout(hoverTimeout.current); };
-  }, [strategy]);
-  const hoverTimeout = useRef(0);
+  }, [strategy, resolved]);
   const onClick: MouseEventHandler<HTMLAnchorElement> = async event => {
     onClickProp?.(event);
+    if (!resolved) { event.preventDefault(); return; }
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     if (target && target !== '_self') return;
     if (download !== undefined) return;
     event.preventDefault();
-    await beforeNavigate?.();
+    // A rejected beforeNavigate must not become an unhandled rejection: log it
+    // and stay on the page.
+    try {
+      await beforeNavigate?.();
+    } catch (error) {
+      console.error('[clear-safe-router] Link beforeNavigate failed:', error);
+      return;
+    }
     void routerRuntime.navigate({ toRaw: targetPath, state, replace });
   };
   const onMouseEnter = (event: MouseEvent<HTMLAnchorElement>) => {
     onMouseEnterProp?.(event);
-    if (resolveStrategy() !== 'hover') return;
+    if (!resolved || resolveStrategy() !== 'hover') return;
     const delay = hoverPrefetchDelay ?? routerConfig.defaultHoverPrefetchDelay;
     if (!delay) return;
     if (hoverTimeout.current) window.clearTimeout(hoverTimeout.current);
@@ -86,7 +109,7 @@ export const Link = (props: LinkProps) => {
   };
   const onMouseLeave = (event: MouseEvent<HTMLAnchorElement>) => {
     onMouseLeaveProp?.(event);
-    if (resolveStrategy() !== 'hover') return;
+    if (!resolved || resolveStrategy() !== 'hover') return;
     if (hoverTimeout.current) { window.clearTimeout(hoverTimeout.current); hoverTimeout.current = 0; }
   };
   const normalizedClassName = typeof className === 'function' ? className({ isActive, isPending }) : className;
@@ -95,7 +118,10 @@ export const Link = (props: LinkProps) => {
   const renderProps = {
     ...restProps,
     'ref': anchorRef,
-    'href': targetPath,
+    // An unresolvable target renders as a disabled anchor: no href, no
+    // navigation, no prefetch — the tree keeps rendering.
+    'href': resolved ? targetPath : undefined,
+    'aria-disabled': (resolved ? undefined : true) as true | undefined,
     'className': resultClassName || undefined,
     'style': normalizedStyle,
     'onClick': onClick,

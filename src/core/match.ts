@@ -23,6 +23,10 @@ export const canonicalSearch = (search: string) => {
 };
 export const splitPath = (value: string) => value.split('/').filter(Boolean);
 export const splitLocation = (value: string) => {
+  // A `#hash` is not route identity: `navigate('/x#y')` must match `/x`, not
+  // fail with a literal '#y' segment in the pathname.
+  const hashIndex = value.indexOf('#');
+  if (hashIndex !== -1) value = value.slice(0, hashIndex);
   const index = value.indexOf('?');
   return index === -1 ? { pathname: value, search: '' } : { pathname: value.slice(0, index), search: value.slice(index) };
 };
@@ -68,7 +72,9 @@ const compareSpecificity = (a: number[], b: number[]) => {
   }
   return 0;
 };
-export const matchRoutes = (pathname: string, location: RouterLocation, routes: RouteNode | undefined): RouteMatch[] => {
+// `location` is kept in the signature for compatibility: it used to feed the
+// match's `key` field, which was removed as dead (cache keys come from `routeKey`).
+export const matchRoutes = (pathname: string, _location: RouterLocation, routes: RouteNode | undefined): RouteMatch[] => {
   if (!routes) return [];
   const { routes: all, parents } = flatten(routes);
   const candidates = all.flatMap(({ route, depth }) => {
@@ -91,7 +97,7 @@ export const matchRoutes = (pathname: string, location: RouterLocation, routes: 
   }
   return path.map(route => {
     const params = route === leaf.route ? leaf.params : matchSegments(route.path, pathname, 'prefix') ?? {};
-    return { route, params, key: `${route.id}|${location.pathname}${location.search}` };
+    return { route, params };
   });
 };
 export const formatSearch = (search?: string | Record<string, string | number | boolean | null | undefined>) => {
@@ -119,7 +125,8 @@ export const resolveTarget = (target: { to?: string; toRaw?: string; params?: Re
   return { pathname: split.pathname, search: target.search !== undefined ? formatSearch(target.search) : split.search, state: target.state };
 };
 export const toError = (error: unknown) => error instanceof Error ? error : new Error(String(error));
-export const isSameLocation = (a: RouterLocation, b: RouterLocation) => a.pathname === b.pathname && a.search === b.search;
+export const isSameLocation = (a: RouterLocation, b: RouterLocation) =>
+  a.pathname === b.pathname && canonicalSearch(a.search) === canonicalSearch(b.search);
 export const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 export const isVerticalScroll = (element: { scrollHeight: number; clientHeight: number } | null) => !!element && element.scrollHeight > element.clientHeight;
 export const parseCacheKey = (key: string) => { const separator = key.indexOf('|'); return { id: key.slice(0, separator), url: key.slice(separator + 1) }; };

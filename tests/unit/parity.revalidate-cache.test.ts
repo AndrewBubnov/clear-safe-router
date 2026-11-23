@@ -20,7 +20,6 @@ const node = (id: string, path: string, options: FileRouteOptions<any> = {}, chi
 const matchFor = (options: FileRouteOptions<any>, params: Record<string, string> = {}): RouteMatch => ({
   route: node('/test', '/test', options),
   params,
-  key: '/test|/test',
 });
 
 const loc = (pathname = '/test', search = '') => ({ pathname, search });

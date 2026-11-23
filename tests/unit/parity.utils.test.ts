@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSearch, interpolate, isParamSegment, isVerticalScroll, matchRoutes, matchSegments, matchesPath, sleep, splitLocation } from '../../src/core/match';
+import { formatSearch, interpolate, isParamSegment, isSameLocation, isVerticalScroll, matchRoutes, matchSegments, matchesPath, sleep, splitLocation } from '../../src/core/match';
 import type { FileRouteOptions, RouteNode } from '../../src/types';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({
@@ -85,7 +85,6 @@ describe('route matching (original createRouter flattening)', () => {
     const tree = root([node('/settings', '/settings', { loader })]);
     const matches = matchRoutes('/settings', { pathname: '/settings', search: '?tab=1' }, tree);
     expect(matches.at(-1)!.route.options.loader).toBe(loader);
-    expect(matches.at(-1)!.key).toBe('/settings|/settings?tab=1');
   });
 
   it('collects layout options along the matched chain', () => {
@@ -162,10 +161,22 @@ describe('formatSearch (original formatSearchObject)', () => {
   });
 });
 
+describe('isSameLocation', () => {
+  it('compares search canonically: reordered same-name params are the same location', () => {
+    expect(isSameLocation({ pathname: '/x', search: '?b=2&a=1' }, { pathname: '/x', search: '?a=1&b=2' })).toBe(true);
+    expect(isSameLocation({ pathname: '/x', search: '?b=2&a=1' }, { pathname: '/x', search: '?a=1&b=3' })).toBe(false);
+    expect(isSameLocation({ pathname: '/x', search: '?a' }, { pathname: '/x', search: '?a=' })).toBe(true);
+  });
+});
+
 describe('splitLocation (original parseWindowLocation)', () => {
   it('splits pathname and search', () => {
     expect(splitLocation('/users?tab=1')).toEqual({ pathname: '/users', search: '?tab=1' });
     expect(splitLocation('/users')).toEqual({ pathname: '/users', search: '' });
+  });
+  it('a #hash is not route identity: it is stripped, not matched as a segment', () => {
+    expect(splitLocation('/users#top')).toEqual({ pathname: '/users', search: '' });
+    expect(splitLocation('/users?tab=1#top')).toEqual({ pathname: '/users', search: '?tab=1' });
   });
 });
 

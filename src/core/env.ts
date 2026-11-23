@@ -27,6 +27,10 @@ export interface RouterEnv {
   currentUrl(): string;
   push(url: string, state: unknown): void;
   replace(url: string, state: unknown): void;
+  /** Traverses history backwards/forwards. Contract: a traversal must end with
+   * an `onPopState` callback — the core only reacts to that event. Real history
+   * fires it asynchronously; a synchronous memory implementation must call the
+   * listeners itself after moving. */
   back(): void;
   forward(): void;
   /** History event subscription (popstate); return an unsubscribe function. */
