@@ -71,4 +71,18 @@ describe('useBlocker lifecycle', () => {
     rerender();
     await waitFor(() => expect(blockerStateStore.getState()).toBe('charged'));
   });
+
+  it('updateSearchParams respects the blocker like any navigation', async () => {
+    const tree = root([node('/', '/', { component: () => <p>home</p> })]);
+    renderAt('/', tree);
+    await screen.findByText('home');
+    renderHook(() => useBlocker(() => true));
+    await waitFor(() => expect(blockerStateStore.getState()).toBe('charged'));
+    const { updateSearchParams } = await import('../../src/core/actions');
+    await act(async () => { updateSearchParams('page', '2'); });
+    expect(blockerStateStore.getState()).toBe('blocked');
+    // The pending target carries the new search: proceeding navigates there.
+    expect(blockedTargetStore.getState()).toMatchObject({ pathname: '/', search: '?page=2' });
+    expect(window.location.search).toBe('');
+  });
 });

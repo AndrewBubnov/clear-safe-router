@@ -72,8 +72,9 @@ const compareSpecificity = (a: number[], b: number[]) => {
   }
   return 0;
 };
-// `location` is kept in the signature for compatibility: it used to feed the
-// match's `key` field, which was removed as dead (cache keys come from `routeKey`).
+// `location` is legacy since the match's `key` field was removed (cache keys
+// come from `routeKey`): the argument is ignored. Kept in the signature for
+// source compatibility in 0.x; passing it has no effect. @deprecated
 export const matchRoutes = (pathname: string, _location: RouterLocation, routes: RouteNode | undefined): RouteMatch[] => {
   if (!routes) return [];
   const { routes: all, parents } = flatten(routes);

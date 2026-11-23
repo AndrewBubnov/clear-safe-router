@@ -1,4 +1,4 @@
-import { Suspense, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { restoreScrollNow, useRouterSnapshot } from '../runtime';
 import { dataStore } from '../core/state';
 import { routeKey } from '../core/state';
@@ -16,7 +16,9 @@ export const Outlet = () => {
  * The effect also re-runs when the route's own cache key changes (same route object, different
  * params, e.g. /item/1 → /item/2), otherwise the restore would fire only once per mount. */
 const ScrollRestore = ({ route, restoreKey }: { route: { options: { scrollRestoration?: boolean | string[] } }; restoreKey: string }) => {
-  useEffect(() => {
+  // Layout effect: restoring after a passive effect paints the old position
+  // first — a visible jump. Before commit there is no DOM to scroll yet.
+  useLayoutEffect(() => {
     if (route.options.scrollRestoration) restoreScrollNow({ resetIfUnsaved: true });
   }, [route, restoreKey]);
   return null;

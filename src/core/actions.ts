@@ -386,6 +386,7 @@ export const updateSearchParams = (
   keyOrUpdate: string | ((previous: URLSearchParams) => URLSearchParams),
   value?: string | string[] | null,
 ) => {
+  if (blockerStateStore.getState() === "blocked") return;
   const previous = new URLSearchParams(snapshot().location.search);
   const nextSearch =
     typeof keyOrUpdate === "function"
@@ -402,6 +403,16 @@ export const updateSearchParams = (
   const search = nextSearch.toString();
   const previousLocation = snapshot().location;
   const location = { ...previousLocation, search: search ? `?${search}` : "" };
+  // Same blocker contract as loadLocation: a search-only replace is a
+  // transition, and a dirty-form blocker must be able to hold it. Proceeding
+  // stores the target so the blocker's proceed() navigates with the new search.
+  if (blockerStateStore.getState() === "charged") {
+    blockerStateStore.setState("blocked");
+    blockedTargetStore.setState(location);
+    emitSnapshot();
+    return;
+  }
+  if (blockerStateStore.getState() === "blocked") return;
   getRouterEnv().replace(
     `${location.pathname}${location.search}`,
     location.state,
@@ -422,6 +433,23 @@ export const updateSearchParams = (
       if (oldKey === newKey || !data.has(oldKey)) continue;
       data.set(newKey, data.get(oldKey));
       data.delete(oldKey);
+      // Carry the rendered value into the cache under the new key — but stale
+      // (staleTime 0): the search changed, so only a loader re-run makes it
+      // fresh again. Without this, a staleOnly invalidate would skip the new
+      // URL forever (no entry → shouldRun=false) and the copied value could
+      // never be revalidated without force.
+      const oldEntry = cache.get(oldKey);
+      if (oldEntry) {
+        cache.delete(oldKey);
+        cache.set(newKey, {
+          ...oldEntry,
+          staleTime: 0,
+          reason: "navigation",
+          prefetchedUntil: undefined,
+          timer: undefined,
+          gcExpiresAt: undefined,
+        });
+      }
     }
   }
   dataStore.setState(data);

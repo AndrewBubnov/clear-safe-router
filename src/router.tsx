@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, type ReactNode } from "react";
 import { RouteMatchRoot, RouteOutlet } from "./route";
 import {
   configureRouter,
@@ -13,6 +13,16 @@ import {
 } from "./runtime";
 import type { RouterProps } from "./types";
 import { getRouterEnv } from "./core/env";
+import { routerConfig } from "./core/config";
+
+/** The notFound view has no matched route, so no ScrollRestore runs inside
+ * RouteOutlet — an unseen location should still start at the top. */
+const NotFoundView = ({ children }: { children: ReactNode }) => {
+  useLayoutEffect(() => {
+    getRouterEnv().scrollTo({ left: 0, top: 0, behavior: routerConfig.defaultScrollRestorationBehavior });
+  }, []);
+  return <>{children}</>;
+};
 
 export const Router = ({
   routes,
@@ -111,7 +121,7 @@ export const Router = ({
         return <ErrorView error={error} />;
       }
     }
-    return <>{notFound}</>;
+    return <NotFoundView>{notFound}</NotFoundView>;
   }
   const leaf = state.matches[state.matches.length - 1];
   if (
@@ -119,7 +129,7 @@ export const Router = ({
     leaf?.route.id === "__root__" &&
     state.status === "active"
   )
-    return <>{notFound}</>;
+    return <NotFoundView>{notFound}</NotFoundView>;
   const tree = (
     <RouteMatchRoot defaults={{ pendingFallback, errorFallback }}>
       <RouteOutlet index={0} />

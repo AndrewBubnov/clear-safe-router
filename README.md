@@ -509,7 +509,7 @@ Caching semantics:
 { optimistic: true }
 ```
 
-**Polling** revalidates on an interval while the route is active, ignoring `staleTime`; navigation away stops it. The deepest matched route declaring `pollingInterval` wins:
+**Polling** revalidates on an interval while the route is active, ignoring `staleTime`; navigation away stops it. One polling timer runs at a time, and the deepest matched route declaring `pollingInterval` wins: if a layout polls every 30s and its child every 5s, only the child polls while both are active — a layout that must keep polling on its own needs its own polling on the child's data or a different structure:
 
 ```tsx
 { pollingInterval: 5000 }

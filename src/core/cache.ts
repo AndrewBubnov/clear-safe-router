@@ -189,7 +189,11 @@ export const runLoader = (
       const delay = typeof retry === "number" ? 0 : retry?.delay ?? 0;
       if (attempts <= count) {
         if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-        if (!requestSignal.aborted) return work(requestSignal);
+        // An abort during the retry pause is a supersede, not a failure: the
+        // navigation is already someone else's — resolve quietly instead of
+        // throwing the original error into the error maps.
+        if (requestSignal.aborted) return undefined;
+        return work(requestSignal);
       }
       throw error;
     }

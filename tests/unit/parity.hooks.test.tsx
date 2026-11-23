@@ -14,7 +14,7 @@ import {
   useRouterContext,
   useSearchParams,
 } from '../../src/index';
-import { configureRouter, resetRouterState, setRouterConfig } from '../../src/runtime';
+import { configureRouter, invalidate, resetRouterState, setRouterConfig } from '../../src/runtime';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({
   id,
@@ -216,6 +216,46 @@ describe('hooks parity (original Link.test.tsx)', () => {
     // Deliberate API extension: absent keys yield null (and repeated keys an array)
     // instead of the original's '' placeholder.
     expect(screen.getByTestId('hook-value').textContent).toBe('null');
+  });
+
+  it('useSearchParams returns stable identities across re-renders with the same search', async () => {
+    const identities: ReturnType<typeof useSearchParams>[] = [];
+    const Probe = () => {
+      identities.push(useSearchParams());
+      return null;
+    };
+    renderAt('/about?foo=bar', hookTree(() => { Probe(); return null; }));
+    await waitFor(() => expect(identities.length).toBeGreaterThan(0));
+    const initial = identities[identities.length - 1]!;
+    await act(async () => { initial.setSearchParams('foo', 'baz'); });
+    const afterUpdate = identities[identities.length - 1]!;
+    // The setter stays stable across search changes for memoized consumers;
+    // the parsed params refresh with the URL.
+    expect(afterUpdate.setSearchParams).toBe(initial.setSearchParams);
+    expect(afterUpdate.searchParams).not.toBe(initial.searchParams);
+    expect(afterUpdate.searchParams.get('foo')).toBe('baz');
+  });
+
+  it('staleOnly invalidate finds a search-shallow-updated URL (the copied cache entry is stale, not missing)', async () => {
+    const loader = vi.fn(async ({ search }: any) => `page:${search.page ?? '1'}`);
+    const tree = root([node('/list', '/list', { loader, staleTime: Infinity, component: () => <p>List</p> })]);
+    renderAt('/list', tree);
+    await screen.findByText('List');
+    expect(loader).toHaveBeenCalledTimes(1);
+    const { updateSearchParams } = await import('../../src/core/actions');
+    await act(async () => { updateSearchParams('page', '2'); });
+    const { cache } = await import('../../src/core/state');
+    const newKey = cache.keys().next().value as string;
+    expect(newKey).toContain('page=2');
+    // The carried value is deliberately stale: only a loader run re-freshens it.
+    expect(cache.get(newKey)!.staleTime).toBe(0);
+    expect(window.location.search).toBe('?page=2');
+    // A staleOnly revalidation now finds the entry and re-runs the loader with
+    // the new search — previously the missing cache entry made it skip forever.
+    loader.mockClear();
+    await act(async () => { await invalidate(undefined, { staleOnly: true }); });
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(loader.mock.calls[0]?.[0]).toMatchObject({ search: { page: '2' } });
   });
 
   it('setSearchParams updates the URL for strings and functions', async () => {

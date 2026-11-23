@@ -19,6 +19,7 @@ import { emit, isCacheFresh, runLoader, scheduleGc, syncCacheSnapshot } from "./
 import { captureScroll } from "./scroll";
 import {
   formatSearch,
+  isSameLocation,
   matchRoutes,
   sleep,
   splitLocation,
@@ -79,7 +80,11 @@ export const loadLocation = async (
   location: RouterLocation,
   options: { replace?: boolean; fromPop?: boolean; prevLocation?: { pathname: string; search: string }; redirectDepth?: number } = {},
 ) => {
-  if (!options.fromPop) captureScroll(snapshotGetter().location);
+  // Scroll is captured for the page the user actually SAW: during a redirect
+  // chain the snapshot already holds the pending (never rendered) URL, so the
+  // committed location is the truthful key. Without this, every hop of a
+  // redirect chain would litter the map with never-rendered entries.
+  if (!options.fromPop) captureScroll(committedLocationRef.current ?? snapshotGetter().location);
   if (blockerStateStore.getState() === "charged") {
     blockerStateStore.setState("blocked");
     blockedTargetStore.setState(location);
@@ -149,7 +154,10 @@ export const loadLocation = async (
             params: match.params,
             search: Object.fromEntries(new URLSearchParams(location.search)),
             context: contextStore.getState(),
-            location,
+            // Same object as the eventual committed snapshot's location, so
+            // guards and afterLoad hooks see identical shape (incl.
+            // `prevLocation` — a guard can know where the user came from).
+            location: nextLocation,
             // The navigation owns the signal (superseded by the next navigation),
             // so in-flight guard work can cancel itself. The seq check below is
             // the only supersede decision — a dead guard's redirect is discarded.
@@ -374,12 +382,10 @@ export const schedulePolling = (
   if (!target) return;
   pollTimer = setInterval(() => {
     // Check freshness BEFORE spending the request: once the user navigated away,
-    // the old location must not keep polling.
+    // the old location must not keep polling. Canonical comparison — a search
+    // reorder (`?a=1&b=2` → `?b=2&a=1`) is the same location, not a departure.
     const current = snapshotGetter().location;
-    if (
-      `${current.pathname}${current.search}` !== `${location.pathname}${location.search}`
-    )
-      return;
+    if (!isSameLocation(current, location)) return;
     void runLoader(
       target,
       location,
@@ -388,12 +394,7 @@ export const schedulePolling = (
       "polling",
     )
       .then((value) => {
-        if (
-          `${snapshotGetter().location.pathname}${
-            snapshotGetter().location.search
-          }` !== `${location.pathname}${location.search}`
-        )
-          return;
+        if (!isSameLocation(snapshotGetter().location, location)) return;
         // Only the data slice changes: data subscribers re-render from their own
         // store; the snapshot listeners may be woken by the loader's own emit,
         // but the snapshot object identity is unchanged so route/status/location

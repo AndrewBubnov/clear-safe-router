@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type SubmitEvent } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type SubmitEvent } from "react";
 import {
   routerRuntime,
   processBlockedTarget,
@@ -29,24 +29,31 @@ export function useRouteStatus(predicate?: (status: RouterStatus) => boolean) {
 export const useCacheSnapshot = () => useCacheSnapshotValue() as CacheSnapshot;
 export const useSearchParams = () => {
   const state = useRouterSnapshot();
-  const params = new URLSearchParams(state.location.search);
-  const setSearchParams = ((
-    keyOrUpdate: string | ((previous: URLSearchParams) => URLSearchParams),
-    value?: string | string[] | null,
-  ) => updateSearchParams(keyOrUpdate, value)) as ((
-    key: string,
-    value: string | string[] | null,
-  ) => void) &
-    ((update: (previous: URLSearchParams) => URLSearchParams) => void);
-  return {
-    searchParams: params,
-    getSearchParams: (key: string): string | string[] | null => {
-      const all = params.getAll(key);
-      if (all.length === 0) return null;
-      return all.length === 1 ? all[0]! : all;
-    },
-    setSearchParams,
-  };
+  // Stable identities across re-renders with the same search: memoized
+  // consumers can safely list these in their dependency arrays.
+  const searchParams = useMemo(
+    () => new URLSearchParams(state.location.search),
+    [state.location.search],
+  );
+  const setSearchParams = useCallback(
+    (
+      keyOrUpdate: string | ((previous: URLSearchParams) => URLSearchParams),
+      value?: string | string[] | null,
+    ) => updateSearchParams(keyOrUpdate, value),
+    [],
+  );
+  return useMemo(
+    () => ({
+      searchParams,
+      getSearchParams: (key: string): string | string[] | null => {
+        const all = searchParams.getAll(key);
+        if (all.length === 0) return null;
+        return all.length === 1 ? all[0]! : all;
+      },
+      setSearchParams,
+    }),
+    [searchParams, setSearchParams],
+  );
 };
 export const useRestoreScroll = () => restoreScrollNow;
 let blockerOwnerSeq = 0;
