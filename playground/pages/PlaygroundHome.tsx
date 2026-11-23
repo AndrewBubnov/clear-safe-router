@@ -2,11 +2,9 @@ import { useRef } from "react";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import {
   ActivityIcon,
-  ArrowRightIcon,
   ArrowUpRightIcon,
   DatabaseIcon,
   HistoryIcon,
-  LayersIcon,
   ListChecksIcon,
   LockIcon,
   NetworkIcon,
@@ -14,7 +12,6 @@ import {
   RefreshCwIcon,
   RouteIcon,
   SearchIcon,
-  SettingsIcon,
   ShieldCheckIcon,
   ZapIcon,
 } from "@animateicons/react/lucide";
@@ -23,11 +20,19 @@ import { isMobileViewport } from "./utils";
 
 type Tone = "indigo" | "cyan" | "rose" | "amber" | "violet" | "teal";
 
-type AnimatedIconHandle = { startAnimation: () => void; stopAnimation: () => void };
+type AnimatedIconHandle = {
+  startAnimation: () => void;
+  stopAnimation: () => void;
+};
 /** Animated icons from @animateicons/react: animate on hover (of the icon box)
  * and can be driven programmatically via `isAnimated`/the imperative handle. */
 type AnimatedIconComponent = ForwardRefExoticComponent<
-  { size?: number; color?: string; isAnimated?: boolean; duration?: number } & RefAttributes<AnimatedIconHandle>
+  {
+    size?: number;
+    color?: string;
+    isAnimated?: boolean;
+    duration?: number;
+  } & RefAttributes<AnimatedIconHandle>
 >;
 
 type Demo = {
@@ -174,49 +179,9 @@ export const PlaygroundHome = () => (
         <span className="pg-eyebrow">Clear safe Router</span>
         <h1>Clear Router Playground</h1>
         <p className="pg-hero__lead">
-          Live demos of data loading, cache and navigation. Every card is a
-          working route — open the <strong>network tab</strong> and click
-          around.
+          Every card is a working route — open the <strong>network tab</strong>{" "}
+          and click around.
         </p>
-        <div className="pg-hero__actions">
-          <a
-            className="pg-button pg-button--primary"
-            href="#demos"
-            onClick={(event) => {
-              event.preventDefault();
-              document.getElementById("demos")?.scrollIntoView({
-                behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
-                  .matches
-                  ? "auto"
-                  : "smooth",
-              });
-            }}
-          >
-            Explore 12 demos
-            <ArrowRightIcon size={17} aria-hidden="true" />
-          </a>
-          <Link
-            className="pg-button pg-button--ghost"
-            to="/playground/settings"
-          >
-            <SettingsIcon size={17} aria-hidden="true" />
-            Settings
-          </Link>
-        </div>
-        <div className="pg-hero__facts">
-          <span>
-            <RouteIcon size={15} aria-hidden="true" />
-            Nested routes
-          </span>
-          <span>
-            <LayersIcon size={15} aria-hidden="true" />
-            Loader cache
-          </span>
-          <span>
-            <ZapIcon size={15} aria-hidden="true" />
-            Optimistic UI
-          </span>
-        </div>
       </div>
       <div className="pg-hero__visual" aria-hidden="true">
         <div className="pg-visual-glow" />
@@ -263,13 +228,7 @@ export const PlaygroundHome = () => (
         the <Link to="/playground/settings">settings page</Link>.
       </p>
     )}
-    <section className="pg-demos" id="demos" aria-labelledby="demos-title">
-      <div className="pg-section-head">
-        <div>
-          <span className="pg-eyebrow">Explore the routes</span>
-          <h2 id="demos-title">Twelve demos, one router</h2>
-        </div>
-      </div>
+    <section className="pg-demos" id="demos" aria-label="Demos">
       <div className="pg-home-grid">
         {demos.map((demo, index) => (
           <DemoCard key={demo.to} demo={demo} index={index} />
