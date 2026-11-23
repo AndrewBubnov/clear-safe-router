@@ -6,13 +6,13 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import {
-  IconMenu2,
-  IconMoon,
-  IconRoute,
-  IconSettings,
-  IconSun,
-  IconX,
-} from "@tabler/icons-react";
+  MenuIcon,
+  MoonIcon,
+  RouteIcon,
+  SettingsIcon,
+  SunIcon,
+  XIcon,
+} from "@animateicons/react/lucide";
 import { Link, type LinkProps } from "clear-safe-router";
 import { usePlaygroundSettings } from "./usePlaygroundSettings";
 import { NAV_LINK_AS } from "./NavLinkAs";
@@ -44,9 +44,9 @@ const ThemeToggle = () => {
       aria-label={label}
     >
       {dark ? (
-        <IconSun size={19} stroke={1.8} />
+        <SunIcon size={19} />
       ) : (
-        <IconMoon size={19} stroke={1.8} />
+        <MoonIcon size={19} />
       )}
     </ActionIcon>
   );
@@ -68,7 +68,7 @@ export const PlaygroundNav = () => {
           aria-label="Clear Router playground — npm package (opens in new tab)"
         >
           <span className="pg-brand-mark" aria-hidden="true">
-            <IconRoute size={20} stroke={1.8} />
+            <RouteIcon size={20} />
           </span>
           <span className="pg-brand-copy">
             <span className="pg-brand">Clear Safe Router</span>
@@ -91,7 +91,7 @@ export const PlaygroundNav = () => {
             aria-label="Settings"
             className="pg-gear-link pg-icon-button"
           >
-            <IconSettings size={19} stroke={1.8} aria-hidden="true" />
+            <SettingsIcon size={19} aria-hidden="true" />
           </Link>
           <ActionIcon
             className="pg-menu-toggle pg-icon-button"
@@ -104,9 +104,9 @@ export const PlaygroundNav = () => {
             aria-controls="pg-nav"
           >
             {menuOpen ? (
-              <IconX size={19} stroke={1.8} />
+              <XIcon size={19} />
             ) : (
-              <IconMenu2 size={19} stroke={1.8} />
+              <MenuIcon size={19} />
             )}
           </ActionIcon>
         </div>

@@ -1,10 +1,26 @@
+import { useEffect, useRef } from "react";
 import { Button, Stack, Text } from "@mantine/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { PlugZapIcon } from "@animateicons/react/lucide";
 import { getRoute, Link, useInvalidate } from "clear-safe-router";
 
 import { fetchExternalQuote, type ExternalQuote } from "./api";
 
 const route = getRoute("/playground/cache/external/$extId");
+
+/** Pulses once per fact refetch: the effect on `loads` start()s the animated
+ * icon whenever the counter changes — the icon literally shows the external
+ * cache doing work (hover-trigger still applies, like every animated icon). */
+const LoadPulse = ({ loads }: { loads: number }) => {
+  const iconRef = useRef<{ startAnimation: () => void; stopAnimation: () => void }>(null);
+  const mounted = useRef(false);
+  useEffect(() => {
+    // Skip the initial mount: the pulse is for RE-fetches, not the first load.
+    if (!mounted.current) { mounted.current = true; return; }
+    iconRef.current?.startAnimation();
+  }, [loads]);
+  return <PlugZapIcon className="pg-anim-icon-inline" ref={iconRef} size={20} aria-hidden="true" />;
+};
 
 /** Same as the loader: TQ decides whether a refetch is needed. */
 const quoteQuery = (symbol: string, staleTime = 5000) => ({
@@ -31,7 +47,9 @@ const ExternalCachePage = () => {
     <div className="pg-wrap">
       <h1>External data cache (TanStack Query)</h1>
       <div className="pg-card">
-        <h2>Route snapshot (loader pipeline)</h2>
+        <h2>
+          Route snapshot (loader pipeline) <LoadPulse loads={data.loads} />
+        </h2>
         <p className="pg-row pg-no-margin">
           <span className="pg-badge">{data.symbol}</span>
           <span className="pg-badge ok">${data.price}</span>
@@ -83,6 +101,9 @@ const ExternalCachePage = () => {
         </p>
         <p className="pg-row pg-no-margin">
           <span className="pg-badge">{count(ticker.data?.loads ?? 0)}</span>
+          {/* Pulses exactly when the counter bumps: silent for a no-op router
+              invalidate inside the freshness window, pulsing on a real refetch. */}
+          <LoadPulse loads={ticker.data?.loads ?? 0} />
         </p>
         <div className="pg-btn-grid">
           <Button
