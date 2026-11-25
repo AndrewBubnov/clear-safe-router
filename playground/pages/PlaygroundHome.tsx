@@ -116,8 +116,8 @@ const demos: Demo[] = [
   },
   {
     to: "/playground/search",
-    title: "Search params",
-    text: "Filter via useSearchParams — single values and arrays, URL updates as you type.",
+    title: "Data table",
+    text: "TanStack Table over loader data: multi-brand checkboxes, sort and pagination all live in the URL — keepPreviousData holds the rows.",
     icon: SearchIcon,
     tone: "cyan",
   },
