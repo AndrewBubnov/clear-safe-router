@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { getRoute, Link, useSearchParams } from 'clear-safe-router';
 import { createColumnHelper, tableFeatures, useTable } from '@tanstack/react-table';
 import type { TablePayload, TableRow } from '@/pages/api';
+import { isMobileViewport } from './utils';
 
 const route = getRoute('/playground/search');
 
@@ -14,7 +15,8 @@ const columns = helper.columns([
 	helper.accessor('product', { header: 'Product' }),
 	helper.accessor('brand', { header: 'Brand' }),
 	helper.accessor('price', { header: 'Price' }),
-	helper.accessor('status', { header: 'Status' }),
+	// Mobile: drop the status column — the table gets too tight below 768px.
+	...(isMobileViewport ? [] : [helper.accessor('status', { header: 'Status' })]),
 ]);
 // Module-scope fallback: a fresh `data?.items ?? []` would invalidate the row
 // model on every render.
@@ -138,7 +140,7 @@ const SearchPage = () => {
 									const key = header.column.id;
 									const active = sort === key;
 									return (
-										<th key={header.id}>
+										<th key={header.id} align="left">
 											<button
 												className={active ? 'pg-sort active' : 'pg-sort'}
 												data-testid={`sort-${key}`}

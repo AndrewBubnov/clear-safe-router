@@ -37,6 +37,11 @@ All notable changes to `clear-safe-router` are documented here.
 
 - `externalCache?: boolean` route option and `defaultExternalCache?: boolean`
   router prop (see above).
+- `keepPreviousData?: boolean` route option: while the loader for a new
+  `pathname + search` key is pending, the value committed for the same route
+  under the previous location stays on screen instead of the pending fallback
+  (same element by construction, error views still replace it on failure). The
+  playground's data-table demo is built on it.
 - `beforeLoad` guard hooks receive the navigation's `AbortSignal`
   (`BeforeLoadArgs`); a superseded navigation aborts in-flight guard work.
 - `RouterRuntime.prefetch(target, signal?)` — abortable prefetch; render/viewport
@@ -63,9 +68,6 @@ All notable changes to `clear-safe-router` are documented here.
   `prevLocation`).
 - `Link` no longer crashes the render tree on a missing route parameter — it
   degrades to a disabled anchor with a warning.
-- `updateSearchParams` respects the blocker (charged → blocked with the target;
-  blocked → ignored), commits `prevLocation` for the next navigation, mirrors the
-  data slice into the snapshot, and re-arms polling/GC for the new location.
 - Polling compares locations canonically (a search reorder is not a departure).
 - An abort during a retry delay resolves quietly instead of polluting the error
   maps with the original loader error.
@@ -77,9 +79,6 @@ All notable changes to `clear-safe-router` are documented here.
   blocker can no longer steal ownership from the real one.
 - Dead props `defaultLoaderFallback`/`defaultErrorElement` removed (use
   `pendingFallback`/`errorFallback` on `<Router>`).
-- `RouteMatch.key` removed (dead field: cache keys come from `routeKey`); a
-  stale-only `invalidate()` now finds search-shallow-updated URLs (the copied
-  value lands in the cache as a stale entry, not just in the data store).
 - `splitLocation` strips `#hash` from targets instead of matching it as a path
   segment.
 - Vite plugin route-file detection normalizes Windows/posix path separators.

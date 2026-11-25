@@ -1,6 +1,6 @@
 {
   "name": "clear-safe-router",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "type": "module",
   "description": "File-based React SPA router with compile-time type-safe navigation",
   "sideEffects": false,
@@ -42,7 +42,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src/skills"
   ],
   "scripts": {
     "dev": "npm run router:generate && vite",

@@ -37,6 +37,10 @@
 - Do not hand-edit `playground/routeTree.gen.ts`; run `npm run router:generate`.
 - Route conventions: `__root.tsx` is required; `index.tsx`, `route.tsx`, `$param.tsx`, and `$.tsx` are supported. See the README for the full table.
 
+## Agent Skills
+
+- [getting-started skill](https://github.com/AndrewBubnov/clear-safe-router/blob/main/src/skills/getting-started/SKILL.md): SKILL.md for AI coding agents — setup, mental model, the loading pipeline, and per-task references (routes and loaders, search params as URL state, navigation/blocking/invalidation). The source of truth lives in `src/skills/`.
+
 ## Development
 
 ```bash
