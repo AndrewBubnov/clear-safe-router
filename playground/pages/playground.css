@@ -1245,7 +1245,7 @@ a.mantine-Button-root {
 /* Anchor buttons rendered via Link's `as` (MUI chips, subtle Mantine): drop
  * MUI defaults (uppercase, wide padding, min-width) so long labels fit; all
  * button sizes follow the shared 15px scale. */
-a.mantine-Button-root[data-variant='subtle'],
+a.mantine-Button-root,
 a.MuiButton-root {
 	text-transform: none;
 	font-size: 15px;
