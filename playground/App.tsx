@@ -1,14 +1,8 @@
+import { lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Badge, MantineProvider, type MantineTheme } from "@mantine/core";
-import { useMediaQuery } from "@mantine/hooks";
+import { MantineProvider, type MantineTheme } from "@mantine/core";
 import { QueryClientProvider } from "@tanstack/react-query";
-import {
-  Router,
-  useCacheSnapshot,
-  useRouteStatus,
-  type RouteStatus,
-} from "clear-safe-router";
-import { CacheVisualizer } from "./pages/CacheVisualizer";
+import { Router, useCacheSnapshot, useRouteStatus } from "clear-safe-router";
 import { PlaygroundNav } from "./pages/PlaygroundNav";
 import { routeTree } from "./routeTree.gen";
 import { PlaygroundSettingsProvider } from "./pages/settings";
@@ -16,9 +10,14 @@ import { queryClient } from "./pages/queryClient";
 import { usePlaygroundSettings } from "./pages/usePlaygroundSettings";
 import { theme } from "./pages/theme";
 
+// Mantine-powered UI: loaded only when the visualizer is switched on.
+const CacheVisualizer = lazy(() => import("./pages/CacheVisualizer"));
+
 const CacheVizSlot = ({ maxSlots }: { maxSlots: number }) => {
   const entries = useCacheSnapshot();
-  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
   const visible = entries.some((entry) => entry.isCached);
   return (
     <AnimatePresence initial={false}>
@@ -46,7 +45,9 @@ const CacheVizSlot = ({ maxSlots }: { maxSlots: number }) => {
               : { duration: 0.22, ease: "easeIn" },
           }}
         >
-          <CacheVisualizer maxSlots={maxSlots} />
+          <Suspense fallback={null}>
+            <CacheVisualizer maxSlots={maxSlots} />
+          </Suspense>
         </motion.div>
       )}
     </AnimatePresence>
@@ -88,30 +89,11 @@ const Shell = () => {
   );
 };
 
-const STATUS_COLOR: Record<RouteStatus, string> = {
-  idle: "gray",
-  pending: "indigo",
-  active: "teal",
-  optimistic: "yellow",
-  error: "red",
-};
-
 const Status = () => {
   const status = useRouteStatus();
   const { showStatusBadge } = usePlaygroundSettings();
   if (!showStatusBadge) return null;
-  return (
-    <Badge
-      className="status-badge"
-      color={STATUS_COLOR[status]}
-      variant="light"
-      size="lg"
-      radius="xl"
-      tt="none"
-    >
-      {status}
-    </Badge>
-  );
+  return <span className={`status-badge pg-status-${status}`}>{status}</span>;
 };
 
 const cssVariablesResolver = (t: MantineTheme) => ({

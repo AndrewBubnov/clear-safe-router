@@ -795,7 +795,12 @@ setSearchParams('brand', ['a', 'b']);  // ?brand=a&brand=b
 setSearchParams(prev => { prev.set('page', '2'); return prev; }); // functional
 ```
 
-`setSearchParams` replaces the current history entry in place and does **not** re-run the loader. If the loader depends on query params, navigate explicitly or call `await useInvalidate()()` after.
+`setSearchParams` performs a full navigation to the same pathname with the new query: it pushes a history entry and runs the route `loader` again with the updated search params. Loader data is cached per `pathname + search`, so returning to a previously visited combination of parameters is instant. To revalidate the current parameters without adding a history entry, use `useInvalidate()`:
+
+```tsx
+const invalidate = useInvalidate();
+await invalidate(); // reruns the loader, keeps the history entry
+```
 
 ### `useInvalidate()`
 

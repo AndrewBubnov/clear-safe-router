@@ -6,6 +6,14 @@ All notable changes to `clear-safe-router` are documented here.
 
 ### Changed
 
+- **`setSearchParams` is a full navigation.** It now pushes a history entry and
+  re-runs the route loader with the updated search params (previously it was a
+  `replaceState`-based shallow update that kept the loader data in place).
+  Loader data is cached per `pathname + search`, so revisiting a parameter
+  combination renders from cache. Identical parameters are a no-op (no
+  duplicate history entry). For a loader re-run without a history entry, use
+  `useInvalidate()`. The blocker contract, guards, scroll handling and
+  polling/GC re-arming are inherited from the standard navigation pipeline.
 - **`invalidate()` revalidates the whole matched chain.** Each target now re-runs
   the loaders of every matched route (parent layouts first, then the leaf), not
   only the leaf — a layout loader has its own cache key and its data is part of

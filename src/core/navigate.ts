@@ -118,11 +118,23 @@ export const loadLocation = async (
   const errors = new Map<string, Error>();
   let needsLoading = false;
   let optimistic = false;
+  const previousStatus = snapshotGetter().status;
   for (const match of matches) {
-    const entry = cache.get(routeKey(match.route, location));
+    const key = routeKey(match.route, location);
+    const entry = cache.get(key);
     if (entry && (isCacheFresh(entry) || match.route.options.optimistic))
-      data.set(routeKey(match.route, location), entry.value);
+      data.set(key, entry.value);
     if (entry && match.route.options.optimistic) optimistic = true;
+    // keepPreviousData: carry the committed value for this same route under
+    // the previous location into the pending snapshot, so the element keeps
+    // its data on screen while the new variant loads (same element by
+    // construction: the value exists under this route's key). The cache is
+    // not touched — only the loader commit writes it. Skipped after an error
+    // commit: an error view must not sit on stale-looking data.
+    if (match.route.options.keepPreviousData && !data.has(key) && previousStatus !== 'error') {
+      const previousValue = from ? dataStore.getState().get(routeKey(match.route, from)) : undefined;
+      if (previousValue !== undefined) data.set(key, previousValue);
+    }
     if (match.route.options.loader && !isCacheFresh(entry)) needsLoading = true;
   }
   setSnapshot({

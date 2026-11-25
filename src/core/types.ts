@@ -72,6 +72,11 @@ export type RouteLogicOptions<P extends Record<string, string> = Record<string, 
   gcTime?: number;
   retry?: Retry;
   optimistic?: boolean;
+  /** While pending, keep the previous loader data on screen instead of the
+   * pending fallback. Applies only when the previous navigation committed data
+   * for this same route (same element) — e.g. a search-param change on the
+   * active route. A loader failure still replaces it with the error view. */
+  keepPreviousData?: boolean;
   pollingInterval?: number;
   minLoaderDuration?: number;
   scrollRestoration?: ScrollRestorationOption;

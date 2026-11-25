@@ -14,7 +14,7 @@ import {
   useRouterContext,
   useSearchParams,
 } from '../../src/index';
-import { configureRouter, invalidate, resetRouterState, setRouterConfig } from '../../src/runtime';
+import { configureRouter, resetRouterState, setRouterConfig } from '../../src/runtime';
 
 const node = (id: string, path: string, options: FileRouteOptions<any> = {}, children: RouteNode[] = []): RouteNode => ({
   id,
@@ -224,38 +224,64 @@ describe('hooks parity (original Link.test.tsx)', () => {
       identities.push(useSearchParams());
       return null;
     };
-    renderAt('/about?foo=bar', hookTree(() => { Probe(); return null; }));
+    const tree = hookTree(() => { Probe(); return null; });
+    const { rerender } = renderAt('/about?foo=bar', tree);
     await waitFor(() => expect(identities.length).toBeGreaterThan(0));
     const initial = identities[identities.length - 1]!;
-    await act(async () => { initial.setSearchParams('foo', 'baz'); });
+    // A plain re-render (no navigation): both identities hold, so memoized
+    // consumers can safely list them in their dependency arrays.
+    rerender(<Router routes={tree} />);
+    await waitFor(() => expect(identities.length).toBeGreaterThan(1));
+    const afterRerender = identities[identities.length - 1]!;
+    expect(afterRerender.setSearchParams).toBe(initial.setSearchParams);
+    expect(afterRerender.searchParams).toBe(initial.searchParams);
+    // A search change is a full navigation: the parsed params refresh.
+    await act(async () => {
+      initial.setSearchParams('foo', 'baz');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     const afterUpdate = identities[identities.length - 1]!;
-    // The setter stays stable across search changes for memoized consumers;
-    // the parsed params refresh with the URL.
-    expect(afterUpdate.setSearchParams).toBe(initial.setSearchParams);
-    expect(afterUpdate.searchParams).not.toBe(initial.searchParams);
     expect(afterUpdate.searchParams.get('foo')).toBe('baz');
   });
 
-  it('staleOnly invalidate finds a search-shallow-updated URL (the copied cache entry is stale, not missing)', async () => {
+  it('setSearchParams is a full navigation: the loader reruns for the new search', async () => {
     const loader = vi.fn(async ({ search }: any) => `page:${search.page ?? '1'}`);
     const tree = root([node('/list', '/list', { loader, staleTime: Infinity, component: () => <p>List</p> })]);
     renderAt('/list', tree);
     await screen.findByText('List');
     expect(loader).toHaveBeenCalledTimes(1);
     const { updateSearchParams } = await import('../../src/core/actions');
-    await act(async () => { updateSearchParams('page', '2'); });
+    await act(async () => {
+      updateSearchParams('page', '2');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     const { cache } = await import('../../src/core/state');
-    const newKey = cache.keys().next().value as string;
-    expect(newKey).toContain('page=2');
-    // The carried value is deliberately stale: only a loader run re-freshens it.
-    expect(cache.get(newKey)!.staleTime).toBe(0);
-    expect(window.location.search).toBe('?page=2');
-    // A staleOnly revalidation now finds the entry and re-runs the loader with
-    // the new search — previously the missing cache entry made it skip forever.
-    loader.mockClear();
-    await act(async () => { await invalidate(undefined, { staleOnly: true }); });
+    await waitFor(() => expect(window.location.search).toBe('?page=2'));
+    const newKey = [...cache.keys()].find((key) => key.includes('page=2'));
+    expect(newKey).toBeTruthy();
+    // The new pathname + search combination is its own navigation: fresh
+    // loader data committed for the new cache key.
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(loader.mock.calls[1]?.[0]).toMatchObject({ search: { page: '2' } });
+    expect(cache.get(newKey!)!.value).toBe('page:2');
+  });
+
+  it('setSearchParams with identical parameters is a no-op', async () => {
+    const loader = vi.fn(async ({ search }: any) => `page:${search.page ?? '1'}`);
+    const tree = root([node('/list', '/list', { loader, component: () => <p>List</p> })]);
+    renderAt('/list?page=2', tree);
+    await screen.findByText('List');
     expect(loader).toHaveBeenCalledTimes(1);
-    expect(loader.mock.calls[0]?.[0]).toMatchObject({ search: { page: '2' } });
+    const { updateSearchParams } = await import('../../src/core/actions');
+    const pushes: string[] = [];
+    const env = (await import('../../src/core/env')).getRouterEnv();
+    const originalPush = env.push.bind(env);
+    (env as any).push = (url: string, state?: unknown) => { pushes.push(url); return originalPush(url, state); };
+    await act(async () => { updateSearchParams('page', '2'); });
+    expect(pushes).toEqual([]);
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(window.location.search).toBe('?page=2');
+    (env as any).push = originalPush;
   });
 
   it('setSearchParams updates the URL for strings and functions', async () => {
@@ -271,14 +297,14 @@ describe('hooks parity (original Link.test.tsx)', () => {
     renderAt('/test', root([node('/test', '/test', { loader: async () => 'cached data', component: () => <SetComponent /> })]));
     await waitFor(() => expect(screen.getByTestId('set-string')).toBeTruthy());
     await act(async () => { screen.getByTestId('set-string').click(); });
-    expect(window.location.search).toBe('?color=red');
+    await waitFor(() => expect(window.location.search).toBe('?color=red'));
     await act(async () => { screen.getByTestId('set-fn').click(); });
-    expect(window.location.search).toContain('page=3');
+    await waitFor(() => expect(window.location.search).toContain('page=3'));
     expect(window.location.search).toContain('color=red');
   });
 
-  it('setSearchParams does not rerun the route loader', async () => {
-    const loader = vi.fn().mockResolvedValue('cached data');
+  it('setSearchParams reruns the route loader for the new search', async () => {
+    const loader = vi.fn(async ({ search }: any) => `data:${search.brand ?? 'none'}`);
     const SearchPage = () => {
       const { getSearchParams, setSearchParams } = useSearchParams();
       const data = hookRoute('/test').useLoaderData<string>();
@@ -291,13 +317,16 @@ describe('hooks parity (original Link.test.tsx)', () => {
       );
     };
     renderAt('/test', root([node('/test', '/test', { loader, component: () => <SearchPage /> })]));
-    await waitFor(() => expect(screen.getByTestId('loader-data').textContent).toBe('cached data'));
+    await waitFor(() => expect(screen.getByTestId('loader-data').textContent).toBe('data:none'));
     expect(loader).toHaveBeenCalledTimes(1);
     await act(async () => { screen.getByTestId('set-brand').click(); });
     expect(window.location.search).toBe('?brand=nike');
     expect(screen.getByTestId('brand').textContent).toBe('nike');
-    expect(screen.getByTestId('loader-data').textContent).toBe('cached data');
-    expect(loader).toHaveBeenCalledTimes(1);
+    // The new search is a full navigation: pushed entry, loader re-run,
+    // fresh data committed for the new path+search cache key.
+    await waitFor(() => expect(screen.getByTestId('loader-data').textContent).toBe('data:nike'));
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(loader.mock.calls[1]?.[0]).toMatchObject({ search: { brand: 'nike' } });
   });
 
   it('invalidate after setSearchParams reruns the loader with the new search', async () => {
