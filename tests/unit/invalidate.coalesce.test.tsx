@@ -50,6 +50,21 @@ describe('invalidate coalescing', () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
+  it('reports an explicit target that matches no route at all', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tree = root([
+      node('/tasks', '/tasks', { loader: vi.fn().mockResolvedValue('data'), component: () => <p>Tasks</p> }),
+    ]);
+    renderAt('/tasks', tree);
+    await screen.findByText('Tasks');
+    routerConfig.warnOnUnmatchedRoutes = true;
+
+    await act(async () => { await routerRuntime.invalidate('/definitely-not-a-route'); });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain('/definitely-not-a-route');
+    expect(warn.mock.calls[0]?.[0]).toContain('matches no route');
+  });
+
   it('chained awaited invalidates of one route share a single loader run', async () => {
     const loader = vi.fn().mockResolvedValue('data');
     const tree = root([

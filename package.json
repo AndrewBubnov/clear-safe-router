@@ -1,6 +1,6 @@
 {
   "name": "clear-safe-router",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "File-based React SPA router with compile-time type-safe navigation",
   "sideEffects": false,

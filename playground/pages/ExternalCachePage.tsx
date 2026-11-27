@@ -99,12 +99,14 @@ const ExternalCachePage = () => {
           Press within 5 seconds of a fetch and watch the call counter above the
           buttons:
         </p>
-        <p className="pg-row pg-no-margin">
+        {/* A div, not a <p>: the animated icon's wrapper is a div and HTML
+            forbids divs inside paragraphs (React dev warning). */}
+        <div className="pg-row pg-no-margin">
           <span className="pg-badge">{count(ticker.data?.loads ?? 0)}</span>
           {/* Pulses exactly when the counter bumps: silent for a no-op router
               invalidate inside the freshness window, pulsing on a real refetch. */}
           <LoadPulse loads={ticker.data?.loads ?? 0} />
-        </p>
+        </div>
         <div className="pg-btn-grid">
           <Button
             size="xs"

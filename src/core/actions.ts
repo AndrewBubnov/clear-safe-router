@@ -140,16 +140,20 @@ export const invalidate = async (
   }
   if (!isPattern && options?.force !== false && !options?.staleOnly)
     addLocation(targetPath, targetSearch ?? "");
-  // Dev-only miss report: a cache-only target (pattern, force:false, staleOnly)
-  // that matched nothing silently does nothing — point at the likely cause.
-  if (
-    target !== undefined &&
-    locations.size === 0 &&
-    routerConfig.warnOnUnmatchedRoutes
-  )
-    console.warn(
-      `[clear-safe-router] invalidate(${JSON.stringify(target)}) matched no cached routes — pattern targets, force: false and staleOnly are cache-only and only re-run loaders for entries already in the cache.`,
-    );
+  // Dev-only miss reports. Two ways an explicit target can silently do
+  // nothing: the URL matches no route at all (a typo — the dangerous one), or
+  // a cache-only target (pattern, force:false, staleOnly) found no cache
+  // entries. Both are reported when the host enables route warnings.
+  if (target !== undefined && routerConfig.warnOnUnmatchedRoutes) {
+    const cacheOnly = isPattern || options?.force === false || !!options?.staleOnly;
+    const miss = cacheOnly
+      ? locations.size === 0
+      : !matchRoutes(targetPath, { pathname: targetPath, search: targetSearch ?? "" }, routesRef.current).at(-1);
+    if (miss)
+      console.warn(
+        `[clear-safe-router] invalidate(${JSON.stringify(target)}) matched nothing${cacheOnly ? " — pattern targets, force: false and staleOnly are cache-only and only re-run loaders for entries already in the cache" : " — the target path matches no route"}.`,
+      );
+  }
   const results: InvalidateResult[] = [];
   const seen = new Set<string>();
   for (const location of locations.values()) {

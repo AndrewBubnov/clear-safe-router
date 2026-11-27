@@ -2,6 +2,24 @@
 
 All notable changes to `clear-safe-router` are documented here.
 
+## 1.0.1
+
+### Fixed
+
+- The invalidation miss dev warning now covers both kinds of a silently
+  no-op `invalidate()`: an explicit target that matches no route at all
+  (e.g. a typo — previously it returned without any report), and a cache-only
+  target (a pattern, `force: false` or `staleOnly`) that matched no cached
+  entries. Both report via `console.warn` under `warnOnUnmatchedRoutes`.
+
+### Verified
+
+- Chain dedup regression test added: one `invalidate(['/parent', '/parent/id'],
+  { withChildren: true })` call re-runs the shared parent layout loader once,
+  not per target (`tests/unit/invalidate.chain.test.tsx`).
+- Playground: the animated icon wrapper (a `div`) no longer nests inside a
+  `<p>` on the external-cache page (React dev warning).
+
 ## 1.0.0
 
 ### Changed
