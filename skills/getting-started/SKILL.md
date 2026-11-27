@@ -139,9 +139,11 @@ The whole surface, one line each — details live in the references (load by
 
 ## API discovery
 
-Inspect `src/index.tsx` (the only public entry point), then `src/core/types.ts`
-for route options, `LoaderArgs` and hook signatures, and `src/types.ts` for
-`FileRouteOptions`. The playground (`playground/routes/` +
-`playground/pages/`) shows every feature wired end-to-end against a fake
-in-browser server; the data-table demo is the reference for URL-owned query
-state.
+Inside an installed package, inspect `dist/index.d.ts` (the public React API
+surface), then `dist/types/core/types.d.ts` for route options, `LoaderArgs`
+and hook signatures, and `dist/types/types.d.ts` for `FileRouteOptions`. In
+the GitHub repository the same types live at `src/index.tsx`,
+`src/core/types.ts` and `src/types.ts`. The repository's playground
+(`playground/routes/` + `playground/pages/`) shows every feature wired
+end-to-end against a fake in-browser server; the data-table demo is the
+reference for URL-owned query state.

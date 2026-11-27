@@ -39,7 +39,7 @@
 
 ## Agent Skills
 
-- [getting-started skill](https://github.com/AndrewBubnov/clear-safe-router/blob/main/src/skills/getting-started/SKILL.md): SKILL.md for AI coding agents — setup, mental model, the loading pipeline, and per-task references (routes and loaders, search params as URL state, navigation/blocking/invalidation). The source of truth lives in `src/skills/`.
+- [getting-started skill](https://github.com/AndrewBubnov/clear-safe-router/blob/main/skills/getting-started/SKILL.md): SKILL.md for AI coding agents — setup, mental model, the loading pipeline, and per-task references (routes and loaders, search params as URL state, navigation/blocking/invalidation). The source of truth lives in `skills/` (shipped in the npm tarball; `npx clear-safe-router skill install` copies it into `.claude/skills/`).
 
 ## Development
 

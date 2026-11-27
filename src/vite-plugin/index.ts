@@ -16,6 +16,14 @@ export const clearSafeRouter = (options: TypedRouterPluginOptions = {}): Plugin 
   let routeDir = path.resolve(root, options.routesDirectory ?? 'src/routes');
   let generatedFile = path.resolve(root, options.generatedFile ?? 'src/routeTree.gen.ts');
   let server: import('vite').ViteDevServer | undefined;
+  // One-line discovery hint: an agent driving the dev server learns the
+  // package ships an AI skill (SKILL.md is invisible inside node_modules).
+  let hinted = false;
+  const hintSkill = () => {
+    if (hinted || process.env.CLEAR_ROUTER_NO_HINTS) return;
+    hinted = true;
+    console.log('[clear-safe-router] AI skill: run `npx clear-safe-router skill install` to add it to your agent\'s skills directory');
+  };
 
   /** Runs the generator and reports whether the generated file actually changed.
    * Content-identical regeneration (a route-file edit that does not change the
@@ -64,6 +72,7 @@ export const clearSafeRouter = (options: TypedRouterPluginOptions = {}): Plugin 
       generatedFile = path.resolve(root, options.generatedFile ?? 'src/routeTree.gen.ts');
     },
     buildStart() {
+      hintSkill();
       generate();
     },
     configureServer(devServer) {

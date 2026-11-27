@@ -4,6 +4,22 @@ All notable changes to `clear-safe-router` are documented here.
 
 ## 1.0.2
 
+### Added
+
+- **Skill discovery channels.** The AI skill inside `node_modules` is invisible
+  to skill runners, so the package now surfaces it: `bin/clear-safe-router.mjs`
+  (`npx clear-safe-router skill` prints `SKILL.md`, `skill install` copies it
+  into `.claude/skills/clear-safe-router/`, `--to` overrides the target), an
+  AI-agents block at the top of the README, a one-line `postinstall` hint and
+  a one-line hint on the Vite plugin's dev-server start. All hints are silent
+  under `CI` or `CLEAR_ROUTER_NO_HINTS=1`.
+
+### Changed
+
+- The skill lives at the Agent Skills convention location `skills/<name>/`
+  (was `src/skills/`), so external installers (`npx skills add owner/repo`)
+  and the README path agree with the packaged layout.
+
 ### Fixed
 
 - **Dev warnings were compiled off in the published bundle.** The adapter read

@@ -9,6 +9,13 @@ A provider-free React SPA router with **file-based routing** and **compile-time 
 
 Built on the core runtime from [clear-react-router](https://github.com/AndrewBubnov/clear-react-router) ([npm](https://www.npmjs.com/package/clear-react-router)). Clear Safe Router adds the file-based route generation and the compile-time type layer on top of it.
 
+> **AI agents:** this package ships an Agent Skill with setup recipes, the loading
+> pipeline and per-task references. Read
+> [`skills/getting-started/SKILL.md`](https://github.com/AndrewBubnov/clear-safe-router/blob/main/skills/getting-started/SKILL.md),
+> or from the installed package run `npx clear-safe-router skill` to print it,
+> or `npx clear-safe-router skill install` to copy it into your agent's skills
+> directory (`.claude/skills/` by default, `--to` overrides the target).
+
 ## Why Clear Safe Router?
 
 Most React routers ask you to choose: central route config *or* file-based routes, runtime checks *or* type safety. Clear Safe Router does both halves at once:
@@ -75,10 +82,11 @@ The env is process-global: **one adapter per process**. Hosts that install
 their own `RouterEnv` before importing an adapter keep it — the React adapter
 only wires `browserEnv` while the default `nullEnv` is still in place.
 
-The core never detects dev mode by itself: unmatched-route and hidden-children
-warnings are off until the host turns them on —
-`configureRouter({ warnOnUnmatchedRoutes: true, warnOnHiddenChildren: true })`
-in your dev setup.
+The core never detects dev mode by itself: the React adapter turns both
+warnings on when `process.env.NODE_ENV !== 'production'` (the consumer's own
+bundler decides the mode), and a host can force them off with
+`configureRouter({ warnOnUnmatchedRoutes: false, warnOnHiddenChildren: false })`
+or on explicitly in any environment.
 
 The core compiles without `lib: DOM` and never touches `window`/`document` —
 every platform operation goes through the `RouterEnv` seam. The React layer is
@@ -825,7 +833,7 @@ Returns `{ path, data, error }[]` — one entry per revalidated route. A success
 
 Each target revalidates the **whole matched chain** at its location — parent layout loaders first, then the leaf — since a layout loader has its own cache key and its data is part of the page. A route action revalidates the same way (it invalidates its own path with `force: true`).
 
-Invalidations issued in the same turn share one loader run per cache key. Chained `await invalidate()` calls, several `invalidate()` calls in one handler, or listing a parent and its child together each produce a single refetch: later calls ride the first run's fresh result instead of deleting it and fetching again. A call in a later turn (a new user action, focus/online revalidation) refetches normally.
+Invalidations issued in the same turn share one loader run per cache key. Chained `await invalidate()` calls, several `invalidate()` calls in one handler, or listing a parent and its child together each produce a single refetch: later calls ride the first run's fresh result instead of deleting it and fetching again. (Request counters that also count the route's own navigation loads will show one run per navigation plus one per invalidated key.) A call in a later turn (a new user action, focus/online revalidation) refetches normally.
 
 ### Dev warnings
 
