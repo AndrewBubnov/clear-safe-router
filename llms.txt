@@ -71,7 +71,7 @@ npx tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler \
 - Keep `src/core/index.ts` curated; do not expose cache maps, refs, or listener internals from the public core barrel.
 - Preserve the root `clear-safe-router` API. Prefer additive changes; breaking changes require a major version.
 - `RouterEnv` and `routerConfig.onPrefetch` are process-global: one adapter per process.
-- `routerConfig.warnOnUnmatchedRoutes` defaults to `false`; the React adapter enables it from the bundler dev flag.
+- `routerConfig.warnOnUnmatchedRoutes` and `routerConfig.warnOnHiddenChildren` default to `false`; the React adapter enables both from the bundler dev flag.
 - Core tests use `// @vitest-environment node`; React adapter tests use the default jsdom environment.
 - `resetRouterState()` does not reset `RouterEnv` or `routerConfig`; restore them explicitly in tests.
 - Do not commit `dist/`, `dist-playground/`, coverage, Playwright reports, or test results.

@@ -2,7 +2,7 @@
 
 All notable changes to `clear-safe-router` are documented here.
 
-## Unreleased
+## 1.0.0
 
 ### Changed
 
@@ -22,6 +22,12 @@ All notable changes to `clear-safe-router` are documented here.
   `path`. Look results up by route identity, not by `path` alone.
   `submitRouteAction` revalidates the same way (it invalidates its own path with
   `force: true`).
+- **Same-turn invalidations share one loader run per cache key.** Chained
+  `await invalidate()` calls, several calls in one handler, or a target list
+  naming a parent and its child each produce a single refetch: later calls ride
+  the first run's fresh result instead of deleting it and fetching again.
+  Revalidation from a later turn (new user action, focus/online) refetches
+  normally.
 - **`defaultPrefetchStaleTime` / route-level `prefetchStaleTime` removed** in
   favor of the `externalCache` route flag (and the `defaultExternalCache` router
   prop): a flagged route's cache entry is written with `staleTime: 0` — the
@@ -31,7 +37,8 @@ All notable changes to `clear-safe-router` are documented here.
   with `false`). See the "External data cache" recipe in the README.
 - **`RouteMatch.key` removed** (dead field: cache keys come from `routeKey`, not
   from matches) and the `location` argument of `matchRoutes()` is now ignored —
-  both are source-level breaks for external core consumers, acceptable in 0.x.
+  both are source-level breaks for external core consumers, shipped before the
+  1.0.0 API freeze.
 
 ### Added
 
@@ -50,6 +57,19 @@ All notable changes to `clear-safe-router` are documented here.
   `isSameLocation` compares search canonically — reordered same-name params are
   the same location and share one cache entry.
 - `invalidate()` canonicalizes its target (trailing slashes, duplicate segments).
+- Hidden-children dev warning: `routerConfig.warnOnHiddenChildren` (the React
+  adapter enables it from the bundler dev flag, like
+  `warnOnUnmatchedRoutes`). A matched parent route whose component never
+  renders `<Outlet />` silently hides every route below it — the warning names
+  the parent id, the URL and the hidden child.
+- Invalidation miss dev warning: a cache-only target (a pattern, `force: false`
+  or `staleOnly`) that matched no cached routes reports it via
+  `console.warn` under `warnOnUnmatchedRoutes` instead of silently doing
+  nothing.
+- `npm run smoke-pack` (also chained into `prepublishOnly`): packs the
+  package, extracts the tarball and verifies that every `exports` target and
+  every package-relative path referenced from dist code actually ships — the
+  release check that would have caught the broken 0.1.8 tarball.
 - Loader cache writes abort early when the caller's signal is already aborted.
 - Polling catches `snapshot().data` up in place (same Map identity): the
   snapshot's data slice no longer diverges from the data store, and snapshot
@@ -57,6 +77,15 @@ All notable changes to `clear-safe-router` are documented here.
 
 ### Fixed
 
+- **Packaging: the route generator is shipped in the tarball.** The Vite plugin
+  spawns `scripts/generate-routes.mjs` from the package root, but the `files`
+  allowlist did not include it — a freshly installed package failed on
+  `npm run dev`/`build` with a missing-module error until the consumer vendored
+  the generator manually.
+- **Packaging: the phantom dependency is gone.**
+  `@tanstack/react-table` sat in `dependencies` while only the playground uses
+  it — every consumer installed ~120 kB the library never imports. It moved to
+  `devDependencies`; the package has no runtime dependencies.
 - `navigate(-1)` is now usable in synchronous (memory) environments: the
   `back()`/`forward()` env contract is documented — a traversal must end with an
   `onPopState` callback.

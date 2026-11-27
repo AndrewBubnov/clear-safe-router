@@ -45,9 +45,11 @@ await invalidate(undefined, { staleOnly: true }); // mark stale, refetch lazily
 Invalidation re-runs the loaders of the whole matched chain (parent layouts
 first, then the leaf — a layout loader has its own cache key); only results
 matching the currently active `pathname + search` update the on-screen data.
-The target is canonicalized (trailing slashes, duplicate segments). Use for
-post-mutation refreshes; `useSubmitAction` triggers dependent invalidations
-automatically.
+The target is canonicalized (trailing slashes, duplicate segments).
+Invalidations issued in the same turn (chained awaits, several calls in one
+handler, a parent and its child listed together) share one loader run per
+cache key. Use for post-mutation refreshes; `useSubmitAction` triggers
+dependent invalidations automatically.
 
 ## Prefetch
 

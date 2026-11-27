@@ -5,6 +5,8 @@
 
 A provider-free React SPA router with **file-based routing** and **compile-time type-safe navigation** — nested routes, typed `Link` and hooks, loaders with caching, actions, blockers, prefetching, and scroll restoration, all wired up by a small Vite plugin.
 
+> The "safe" in the name means **type safety** — refactoring-proof routes and params — not security in the vulnerability sense.
+
 Built on the core runtime from [clear-react-router](https://github.com/AndrewBubnov/clear-react-router) ([npm](https://www.npmjs.com/package/clear-react-router)). Clear Safe Router adds the file-based route generation and the compile-time type layer on top of it.
 
 ## Why Clear Safe Router?
@@ -73,8 +75,9 @@ The env is process-global: **one adapter per process**. Hosts that install
 their own `RouterEnv` before importing an adapter keep it — the React adapter
 only wires `browserEnv` while the default `nullEnv` is still in place.
 
-The core never detects dev mode by itself: unmatched-route warnings are off
-until the host turns them on — `configureRouter({ warnOnUnmatchedRoutes: true })`
+The core never detects dev mode by itself: unmatched-route and hidden-children
+warnings are off until the host turns them on —
+`configureRouter({ warnOnUnmatchedRoutes: true, warnOnHiddenChildren: true })`
 in your dev setup.
 
 The core compiles without `lib: DOM` and never touches `window`/`document` —
@@ -821,6 +824,12 @@ await invalidate('/about', { force: false });       // cache-only (never fetch u
 Returns `{ path, data, error }[]` — one entry per revalidated route. A successful revalidation of the active route also resets its status to `active`, so recovering from an error page is just `await invalidate()`. Pattern targets are always cache-only — they never fetch the pattern itself.
 
 Each target revalidates the **whole matched chain** at its location — parent layout loaders first, then the leaf — since a layout loader has its own cache key and its data is part of the page. A route action revalidates the same way (it invalidates its own path with `force: true`).
+
+Invalidations issued in the same turn share one loader run per cache key. Chained `await invalidate()` calls, several `invalidate()` calls in one handler, or listing a parent and its child together each produce a single refetch: later calls ride the first run's fresh result instead of deleting it and fetching again. A call in a later turn (a new user action, focus/online revalidation) refetches normally.
+
+### Dev warnings
+
+In dev builds (`import.meta.env.DEV`) the adapter turns on two console warnings: unmatched routes, and a matched parent route whose component never renders `<Outlet />` — everything below it silently disappears, so the router points at the offending route id and URL. Both can be toggled off with `configureRouter({ warnOnUnmatchedRoutes: false })` / `configureRouter({ warnOnHiddenChildren: false })`.
 
 ### `useCacheSnapshot()`
 

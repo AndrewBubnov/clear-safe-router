@@ -66,6 +66,24 @@ export const navigate = async (
     replace: typeof target !== "string" && target.replace === true,
   });
 };
+/** Invalidations issued in the same turn — including chained `await`s, which
+ * resolve as microtasks — share one loader run per cache key: the first call
+ * deletes the entry and refetches, later calls ride that run instead of
+ * deleting the just-written entry and forcing another request. The registry
+ * entry is released one macrotask after the run settles, so a later turn
+ * (focus/online revalidation, a real user action) still refetches. */
+const invalidationRuns = new Map<string, Promise<unknown>>();
+const retainInvalidationRun = (key: string, run: Promise<unknown>) => {
+  invalidationRuns.set(key, run);
+  const release = () => {
+    setTimeout(() => {
+      if (invalidationRuns.get(key) === run) invalidationRuns.delete(key);
+    }, 0);
+  };
+  // Both handlers provided, so the ignored derived promise never reports an
+  // unhandled rejection for runs that fail.
+  run.then(release, release);
+};
 export const invalidate = async (
   target?: string | string[] | { to: string; params?: Record<string, string> },
   options?: InvalidateOptions,
@@ -122,6 +140,16 @@ export const invalidate = async (
   }
   if (!isPattern && options?.force !== false && !options?.staleOnly)
     addLocation(targetPath, targetSearch ?? "");
+  // Dev-only miss report: a cache-only target (pattern, force:false, staleOnly)
+  // that matched nothing silently does nothing — point at the likely cause.
+  if (
+    target !== undefined &&
+    locations.size === 0 &&
+    routerConfig.warnOnUnmatchedRoutes
+  )
+    console.warn(
+      `[clear-safe-router] invalidate(${JSON.stringify(target)}) matched no cached routes — pattern targets, force: false and staleOnly are cache-only and only re-run loaders for entries already in the cache.`,
+    );
   const results: InvalidateResult[] = [];
   const seen = new Set<string>();
   for (const location of locations.values()) {
@@ -147,21 +175,31 @@ export const invalidate = async (
         ? true
         : !isPattern && options?.force !== false && !options?.staleOnly;
       if (!shouldRun) continue;
-      if (entry?.timer) clearTimeout(entry.timer);
-      cache.delete(key);
-      // Original semantics: an in-flight load for this path is awaited, then a fresh
-      // forced refetch runs — the stale result is never returned to the caller.
-      const flight = flights.get(key);
-      if (flight && !flight.signal.aborted)
-        await flight.promise.catch(() => {});
+      // A run started by an earlier invalidate in this turn still owns the key:
+      // riding it returns the same fresh value instead of refetching again.
+      const pendingRun = invalidationRuns.get(key);
       try {
-        const value = await runLoader(
-          match,
-          location,
-          new AbortController().signal,
-          true,
-          "invalidate",
-        );
+        let value: unknown;
+        if (pendingRun) {
+          value = await pendingRun;
+        } else {
+          if (entry?.timer) clearTimeout(entry.timer);
+          cache.delete(key);
+          // Original semantics: an in-flight load for this path is awaited, then a fresh
+          // forced refetch runs — the stale result is never returned to the caller.
+          const flight = flights.get(key);
+          if (flight && !flight.signal.aborted)
+            await flight.promise.catch(() => {});
+          const started = runLoader(
+            match,
+            location,
+            new AbortController().signal,
+            true,
+            "invalidate",
+          );
+          retainInvalidationRun(key, started);
+          value = await started;
+        }
         results.push({
           path: `${location.pathname}${location.search}`,
           data: value,
@@ -339,6 +377,7 @@ export const withInheritedExternalCache = (
 export const resetRouterState = () => {
   activeControllerRef.current?.abort();
   clearCacheAndFlights();
+  invalidationRuns.clear();
   loaderErrors.clear();
   beforeLoadErrors.clear();
   routeErrors.clear();

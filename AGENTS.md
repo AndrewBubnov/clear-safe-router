@@ -50,7 +50,7 @@ npm run test:e2e            # Playwright; starts the playground dev server
 npm run build:lib           # clean dist, build library JS + declarations
 npm run build:playground    # generate + build playground only
 npm run build               # playground build + library build
-npm run prepublishOnly      # typecheck + test + build:lib
+npm run prepublishOnly      # typecheck + test + build:lib + smoke-pack
 ```
 
 For core-only changes, also run the no-DOM compile:

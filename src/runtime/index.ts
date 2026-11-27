@@ -75,7 +75,9 @@ if (existingOnPrefetch?.__warmsLazyChunks) {
 }
 // The dev signal is an adapter concern: the core stays Vite-free, the adapter
 // reads the bundler flag in its own module scope.
-routerConfig.warnOnUnmatchedRoutes = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+const isDevBuild = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+routerConfig.warnOnUnmatchedRoutes = isDevBuild;
+routerConfig.warnOnHiddenChildren = isDevBuild;
 
 export const routerRuntime: RouterRuntime = { navigate, invalidate, prefetch };
 export const setBlockerStatus = (state: BlockerState) =>

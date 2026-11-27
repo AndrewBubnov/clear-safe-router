@@ -27,6 +27,11 @@ export const routerConfig = {
   /** Unmatched-route dev warning. The core never detects dev itself; the host
    * (or the React adapter) turns this on in its own dev builds. */
   warnOnUnmatchedRoutes: false as boolean,
+  /** Hidden-children dev warning: a matched parent route rendered its own
+   * component without `<Outlet />`, so every route below it silently
+   * disappears. Same contract as `warnOnUnmatchedRoutes` — the core never
+   * detects dev itself. */
+  warnOnHiddenChildren: false as boolean,
   /** Adapter hook: the core reports prefetches; the view layer warms its own
    * code-split chunks (the core does not know about components). */
   onPrefetch: undefined as ((matches: RouteMatch[]) => void) | undefined,

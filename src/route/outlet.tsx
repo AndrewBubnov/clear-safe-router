@@ -1,9 +1,52 @@
-import { Suspense, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { Suspense, useContext, useLayoutEffect, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { restoreScrollNow, useRouterSnapshot } from '../runtime';
 import { dataStore } from '../core/state';
 import { routeKey } from '../core/state';
+import { snapshot } from '../core/state';
+import { LAZY_MARKER } from '../core/constants';
+import { routerConfig } from '../core/config';
 import { DefaultsContext, MatchIndex } from './context';
 import { resolveComponent } from './lazy';
+import type { RouterSnapshot } from '../core/types';
+
+/** Route ids whose RouteOutlet is currently mounted — the hidden-children dev
+ * check compares the matched chain against this set. */
+export const mountedOutlets = new Set<string>();
+const warnedHiddenChildren = new Set<string>();
+
+/** Dev check for a matched parent whose component never rendered `<Outlet />`:
+ * everything below it silently disappears. Runs one macrotask after the
+ * snapshot settles (child effects have registered by then), warns once per
+ * child route id. Known-benign cases are skipped: a parent in the error map
+ * legitimately replaces its subtree, and a lazy parent may still be resolving
+ * its chunk while its fallback is on screen. */
+export const reportHiddenChildren = (state: RouterSnapshot) => {
+  if (!routerConfig.warnOnHiddenChildren) return;
+  if (state.status !== 'active' || state.matches.length < 2) return;
+  setTimeout(() => {
+    // The verdict is about this commit: a newer snapshot means the chain moved
+    // on and its own effect run will check instead.
+    if (snapshot() !== state) return;
+    for (let index = 1; index < state.matches.length; index++) {
+      const match = state.matches[index]!;
+      const parent = state.matches[index - 1]!;
+      if (mountedOutlets.has(match.route.id)) continue;
+      if (state.errors.has(parent.route.id)) continue;
+      const parentComponent: unknown = parent.route.options.component;
+      if (
+        parentComponent &&
+        typeof parentComponent === 'object' &&
+        LAZY_MARKER in (parentComponent as object)
+      )
+        continue;
+      if (warnedHiddenChildren.has(match.route.id)) continue;
+      warnedHiddenChildren.add(match.route.id);
+      console.warn(
+        `[clear-safe-router] Route "${parent.route.id}" does not render <Outlet /> at ${state.location.pathname}${state.location.search} — child route "${match.route.id}" is not rendered. Render <Outlet /> inside its component, or remove the component to let the router render children automatically.`,
+      );
+    }
+  }, 0);
+};
 
 export const Outlet = () => {
   const index = useContext(MatchIndex);
@@ -49,6 +92,14 @@ export const RouteOutlet = ({ index }: { index: number }) => {
     return Component ? <Suspense fallback={pendingNode}><Component /></Suspense> : index < matchesLength - 1 ? <Outlet /> : null;
   }, [route, error, pending, pendingNode, defaults, index, matchesLength]);
   const Layout = route.options.layout;
+  // The hidden-children dev check reads this registration after commit: an
+  // Outlet that never mounts for a matched child route is the warning signal.
+  useEffect(() => {
+    mountedOutlets.add(route.id);
+    return () => {
+      mountedOutlets.delete(route.id);
+    };
+  }, [route]);
   const body = (
     <MatchIndex.Provider value={index}>
       <ScrollRestore route={route} restoreKey={dataKey} />

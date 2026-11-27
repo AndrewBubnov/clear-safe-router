@@ -1,6 +1,6 @@
 {
   "name": "clear-safe-router",
-  "version": "0.1.8",
+  "version": "1.0.0",
   "type": "module",
   "description": "File-based React SPA router with compile-time type-safe navigation",
   "sideEffects": false,
@@ -43,7 +43,8 @@
   },
   "files": [
     "dist",
-    "src/skills"
+    "src/skills",
+    "scripts/generate-routes.mjs"
   ],
   "scripts": {
     "dev": "npm run router:generate && vite",
@@ -60,7 +61,8 @@
     "router:generate": "node scripts/generate-routes.mjs --routes playground/routes --out playground/routeTree.gen.ts",
     "generate": "npm run router:generate",
     "typecheck": "npm run router:generate && tsc -b --force && tsc --noEmit -p tests/types/tsconfig.json",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build:lib"
+    "prepublishOnly": "npm run typecheck && npm test && npm run build:lib && npm run smoke-pack",
+    "smoke-pack": "node scripts/smoke-pack.mjs"
   },
   "keywords": [
     "react",
@@ -93,6 +95,7 @@
     "@mui/material": "^9.5.0",
     "@playwright/test": "^1.40.0",
     "@tanstack/react-query": "^5.108.0",
+    "@tanstack/react-table": "^9.3.1",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
@@ -113,8 +116,5 @@
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
-  },
-  "dependencies": {
-    "@tanstack/react-table": "^9.3.1"
   }
 }

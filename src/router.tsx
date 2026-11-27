@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, type ReactNode } from "react";
-import { RouteMatchRoot, RouteOutlet } from "./route";
+import { RouteMatchRoot, RouteOutlet, reportHiddenChildren } from "./route";
 import {
   configureRouter,
   handlePopState,
@@ -111,6 +111,12 @@ export const Router = ({
   useEffect(() => {
     if (context) mergeContext(context);
   }, [context]);
+  // Runs after every committed snapshot: child effects have registered their
+  // Outlet by then, so a matched route missing from the registry was hidden by
+  // its parent. The check itself re-verifies the snapshot after settling.
+  useEffect(() => {
+    reportHiddenChildren(state);
+  }, [state]);
   if (state.matches.length === 0) {
     if (state.status === "idle" || state.status === "pending")
       return <>{pendingFallback ?? null}</>;
