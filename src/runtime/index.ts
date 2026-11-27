@@ -73,9 +73,14 @@ if (existingOnPrefetch?.__warmsLazyChunks) {
 } else {
   routerConfig.onPrefetch = warmLazyChunks;
 }
-// The dev signal is an adapter concern: the core stays Vite-free, the adapter
-// reads the bundler flag in its own module scope.
-const isDevBuild = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
+// The dev signal is an adapter concern: the core stays Vite-free. Library
+// convention — `process.env.NODE_ENV`, NOT `import.meta.env.DEV`: the latter
+// is statically replaced by THIS package's lib build (baked `false` for every
+// consumer), while NODE_ENV is replaced by the consumer's own bundler with the
+// consumer's mode. The typeof guard keeps raw-ESM browser imports from
+// crashing; without a bundler there is no process, and warnings stay off.
+const isDevBuild =
+  typeof process !== "undefined" && process.env.NODE_ENV !== "production";
 routerConfig.warnOnUnmatchedRoutes = isDevBuild;
 routerConfig.warnOnHiddenChildren = isDevBuild;
 

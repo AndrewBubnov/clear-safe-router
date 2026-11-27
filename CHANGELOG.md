@@ -2,7 +2,20 @@
 
 All notable changes to `clear-safe-router` are documented here.
 
-## 1.0.1
+## 1.0.2
+
+### Fixed
+
+- **Dev warnings were compiled off in the published bundle.** The adapter read
+  `import.meta.env.DEV`, which this package's own lib build statically
+  replaces with `false` — so `warnOnUnmatchedRoutes` and
+  `warnOnHiddenChildren` were permanently off for every consumer, while the
+  README claimed they are on in dev. Dev detection now uses the library
+  convention `process.env.NODE_ENV !== 'production'`, which the consumer's
+  own bundler replaces with the consumer's mode; a raw-ESM import without a
+  bundler keeps the warnings off instead of crashing.
+- `smoke-pack` now also fails the release when `dist` references
+  `import.meta.env` — the check that would have caught the 1.0.1 defect.
 
 ### Fixed
 

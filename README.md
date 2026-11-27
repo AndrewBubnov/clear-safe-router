@@ -829,7 +829,7 @@ Invalidations issued in the same turn share one loader run per cache key. Chaine
 
 ### Dev warnings
 
-In dev builds (`import.meta.env.DEV`) the adapter turns on two console warnings: unmatched routes, and a matched parent route whose component never renders `<Outlet />` — everything below it silently disappears, so the router points at the offending route id and URL. Both can be toggled off with `configureRouter({ warnOnUnmatchedRoutes: false })` / `configureRouter({ warnOnHiddenChildren: false })`.
+In non-production builds (the adapter reads `process.env.NODE_ENV`, so the consumer's own bundler decides the mode) two console warnings turn on: unmatched routes, and a matched parent route whose component never renders `<Outlet />` — everything below it silently disappears, so the router points at the offending route id and URL. Both can be toggled off with `configureRouter({ warnOnUnmatchedRoutes: false })` / `configureRouter({ warnOnHiddenChildren: false })`.
 
 ### `useCacheSnapshot()`
 

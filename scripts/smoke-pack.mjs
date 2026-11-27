@@ -66,6 +66,20 @@ try {
     }
   }
 
+  // import.meta.env must never ship: a lib build statically replaces it with
+  // the LIBRARY's build mode, silently breaking every consumer (the 1.0.1
+  // warnings were baked off exactly this way). Dev detection must use
+  // process.env.NODE_ENV, which the consumer's bundler replaces instead.
+  const bakedEnv = [];
+  for (const file of distFiles) {
+    if (!file.endsWith('.js')) continue;
+    if (/import\.meta\.env/.test(readFileSync(file, 'utf8')))
+      bakedEnv.push(path.relative(pkgDir, file));
+  }
+  if (bakedEnv.length) {
+    console.error(`[smoke-pack] dist must not reference import.meta.env (it is baked to the library's own build mode):\n  ${bakedEnv.join('\n  ')}`);
+    process.exitCode = 1;
+  }
   if (missing.length) {
     console.error(`[smoke-pack] ${tarball} is missing files:\n  ${[...new Set(missing)].join('\n  ')}`);
     process.exitCode = 1;

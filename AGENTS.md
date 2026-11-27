@@ -132,6 +132,13 @@ Rules:
 - `src/types.ts` re-exports core types for the React API. If a type should be
   public from the root, add it to the export list in `src/types.ts`.
 - `src/index.tsx` is the root public barrel. Keep its named exports stable.
+- Never use `import.meta.env` in library code: this package's lib build
+  statically replaces it with the library's own build mode, so every consumer
+  gets the baked value (1.0.1 shipped dev warnings compiled off this way).
+  Use the library convention `process.env.NODE_ENV !== 'production'` — the
+  consumer's bundler replaces it with the consumer's mode. `import.meta.url`
+  is fine. `npm run smoke-pack` fails the release if `import.meta.env` leaks
+  into `dist`.
 - When adding a new package subpath, update:
   - `package.json` → `exports`
   - `vite.lib.config.ts` → `build.lib.entry`
